@@ -34,6 +34,8 @@ jobs:
           node --check src/main.js
       - name: Set up GitHub Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - name: Upload production site
         uses: actions/upload-pages-artifact@v3
         with:

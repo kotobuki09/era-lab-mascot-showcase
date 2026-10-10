@@ -32,12 +32,18 @@ jobs:
         run: |
           node --test tests/verify.mjs tests/engine.test.mjs
           node --check src/main.js
+      - name: Assemble isolated static site
+        run: |
+          mkdir -p dist
+          cp index.html dist/
+          cp -r assets src dist/
+          touch dist/.nojekyll
       - name: Set up GitHub Pages
         uses: actions/configure-pages@v5
       - name: Upload production site
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: dist
       - name: Deploy to Pages
         id: deployment
         uses: actions/deploy-pages@v4

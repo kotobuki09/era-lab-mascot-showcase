@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   deploy:
-    if: ${{ hashFiles('index.html') != '' }}
+    if: github.repository == 'kotobuki09/era-lab-mascot-showcase'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -22,6 +22,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Verify isolated project root
+        run: |
+          test "${{ github.repository }}" = "kotobuki09/era-lab-mascot-showcase"
+          test -f index.html
+          test -f src/main.js
+          test -d assets/directions
       - name: Verify assets, integrity and JavaScript
         run: |
           node --test tests/verify.mjs tests/engine.test.mjs

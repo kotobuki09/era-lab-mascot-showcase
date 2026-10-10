@@ -6,13 +6,15 @@ Premium, dependency-free page-mascot showcase for ERA Lab's **male researcher ma
 
 ## Deployment status
 
-The GitHub Actions workflow is configured in `.github/workflows/pages.yml`. **The complete image assets and frontend code must still be uploaded to this repository** before a working page can deploy. The workflow intentionally skips if `index.html` is missing. This avoids a broken public site.
+✅ Frontend source, 18 production transparent PNG frames, two original master sheets, and 9 automated tests are committed to `main`.
 
-The verified package containing all source and original PNG artwork is available in the ChatGPT conversation that produced the project. Extract it and run `publish-github.ps1` (Windows) or `publish-github.sh` (macOS/Linux), using your authenticated GitHub CLI/Git credentials.
+⚠️ GitHub Actions deployment is currently blocked because **GitHub Pages is not enabled for this repository**. The workflow run reports `Get Pages site failed — Not Found`. An automated attempt to enable Pages using `GITHUB_TOKEN` was rejected by GitHub (`Resource not accessible by integration`).
 
-After pushing, set **Settings → Pages → Build and deployment → Source: GitHub Actions**. Once deployment succeeds, the expected URL is:
+**One-time repository-owner action:** open [Settings → Pages](https://github.com/kotobuki09/era-lab-mascot-showcase/settings/pages), set **Build and deployment → Source: GitHub Actions**. Afterwards, rerun the [latest Pages workflow](https://github.com/kotobuki09/era-lab-mascot-showcase/actions/workflows/pages.yml), or push a small commit to `main`.
 
-https://kotobuki09.github.io/era-lab-mascot-showcase/
+Expected project-only URL: https://kotobuki09.github.io/era-lab-mascot-showcase/
+
+The workflow checks `github.repository` to avoid deploying elsewhere, and uploads only a generated `dist/` folder containing the mascot website. The separate Sharper Night user site `kotobuki09/kotobuki09.github.io` is untouched.
 
 ## Notes
 

@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1230">
+  <meta name="description" content="ERA Lab's interactive male mascot — 9 head directions, 9 expressive reactions, pixel-accurate transparent PNG sprites, and a playful responsive showcase.">
+  <link rel="icon" href="./assets/favicon.png" type="image/png">
+  <link rel="preload" as="image" href="./assets/directions/center.png">
+  <title>ERA Lab — Meet our little research companion</title>
+  <link rel="stylesheet" href="./src/styles.css">
+  <script defer src="./src/manifest.js"></script>
+  <script defer src="./src/main.js"></script>
+</head>
+<body>
+  <div class="page-glow" aria-hidden="true"></div>
+  <header class="header shell">
+    <a href="#top" class="brand" aria-label="ERA Lab mascot home"><span class="brand-icon">✳</span><span>ERA <strong>Lab</strong></span><span class="brand-sub">MASCOT STUDIO</span></a>
+    <nav aria-label="Main navigation" class="nav-links"><a href="#playground">Playground</a><a href="#reactions">Expressions</a><a href="#library">Assets</a></nav>
+    <a class="nav-cta" href="https://github.com/kotobuki09/era-lab-mascot-showcase" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 .9A11.1 11.1 0 0 0 8.49 22.54c.55.11.76-.24.76-.54v-2.12c-3.09.67-3.74-1.32-3.74-1.32-.5-1.27-1.23-1.61-1.23-1.61-1.01-.7.08-.68.08-.68 1.12.08 1.71 1.15 1.71 1.15 1 .1 1.94-.68 2.25-1.08.1-.73.4-1.22.73-1.5-2.47-.28-5.07-1.23-5.07-5.49 0-1.21.43-2.2 1.14-2.98-.11-.28-.5-1.4.11-2.92 0 0 .93-.3 3.05 1.14A10.6 10.6 0 0 1 12 6.15c.95 0 1.9.13 2.79.37 2.12-1.44 3.05-1.14 3.05-1.14.61 1.52.22 2.64.11 2.92.72.78 1.14 1.77 1.14 2.98 0 4.27-2.61 5.2-5.09 5.48.41.35.77 1.05.77 2.12V22c0 .3.2.65.77.54A11.1 11.1 0 0 0 12 .9Z"/></svg> View on GitHub <span aria-hidden="true">↗</span></a>
+  </header>
+  <main id="top">
+    <section class="hero shell">
+      <div class="hero-left">
+        <div class="eyebrow"><span class="live-dot"></span> LITTLE CHARACTER, BIG PERSONALITY <span class="eyebrow-line"></span> V3.0</div>
+        <h1>Say hello<br>to <em>your little</em><br><span>research buddy.</span></h1>
+        <p class="hero-description">Curious, expressive, and always paying attention. A playful companion for ERA Lab, crafted from the original chibi mascot illustration.</p>
+        <div class="hero-actions"><a class="button button-primary" href="#playground">Play with the mascot <span>↗</span></a><a class="button button-outline" href="#library">Explore all frames <span>↓</span></a></div>
+        <div class="hero-stats"><div><b>09</b><span>LOOK DIRECTIONS</span></div><div><b>09</b><span>EMOTIONS</span></div><div><b>100%</b><span>TRANSPARENT PNG</span></div></div>
+      </div>
+      <div class="hero-right" id="hero-stage"><div class="halo halo-a"></div><div class="halo halo-b"></div><div class="star s1">✦</div><div class="star s2">✧</div><div class="star s3">+</div><div class="hero-speech" id="hero-speech">Psst… I can see your cursor! <span>✳</span></div><img src="./assets/directions/up-right.png" class="hero-character" alt="ERA Lab chibi mascot wearing glasses and a white/navy hoodie looking up-right"><div class="hero-stage-bottom"><span>CHARACTER NO. 01</span><span class="online"><i></i> READY TO PLAY</span></div></div>
+    </section>
+    <div class="ribbon" aria-label="Mascot characteristics"><div class="ribbon-track">CURIOUS BY NATURE <span>✳</span> MADE TO REACT <span>✳</span> BUILT WITH CARE <span>✳</span> CURIOSITY IN MOTION <span>✳</span> CURIOUS BY NATURE <span>✳</span> MADE TO REACT <span>✳</span> BUILT WITH CARE <span>✳</span></div></div>
+    <section id="playground" class="section shell">
+      <div class="section-intro"><div><div class="section-kicker">01 / THE PLAYGROUND</div><h2>Go ahead. <em>Say hi.</em></h2><p>Move your mouse anywhere, tap the character, or choose a reaction. It has a little something for every mood.</p></div><div class="section-meta"><span class="status-light"></span> INTERACTIVE SANDBOX</div></div>
+      <div class="play-grid">
+        <div class="play-scene" id="play-scene" tabindex="0" aria-label="Mascot interaction area. Click or press Enter to see a reaction.">
+          <div class="scene-grid" aria-hidden="true"></div><div class="scene-circle scene-circle-1" aria-hidden="true"></div><div class="scene-circle scene-circle-2" aria-hidden="true"></div>
+          <div class="scene-top"><span class="tag"><span class="tag-dot"></span> INTERACTIVE CHARACTER</span><span class="scene-coords" id="direction-status" aria-live="polite">LOOKING · CENTER</span></div>
+          <div class="mascot-stage" id="mascot-stage" role="button" tabindex="0" aria-label="Interact with mascot: click or press Enter for a random reaction"><div class="sprite-shadow"></div><div class="sprite-look"><div class="sprite-breathe"><img id="sprite-base" class="sprite sprite-base" src="./assets/directions/center.png" alt="Male ERA Lab mascot looking forward"><img id="sprite-next" class="sprite sprite-next" src="./assets/directions/center.png" alt="" aria-hidden="true"></div></div></div>
+          <div class="scene-speech" id="scene-speech" aria-live="polite">Move your cursor. I'll follow! <span>✦</span></div>
+          <div class="scene-bottom"><span>✳ MADE FROM ORIGINAL ARTWORK</span><span>CLICK THE MASCOT TO SURPRISE IT</span></div>
+        </div>
+        <aside class="controls" aria-label="Mascot controls">
+          <div class="control-heading"><div><div class="micro-label">CONTROL PANEL</div><h3>Make a face.</h3></div><div class="control-live">● LIVE</div></div>
+          <p class="control-desc">Pick a feeling to see how your little buddy reacts.</p>
+          <div class="reaction-controls" id="reaction-buttons"><button type="button" data-reaction="calm"><span>😌</span> Peaceful</button><button type="button" data-reaction="joy"><span>😄</span> Happy</button><button type="button" data-reaction="surprised"><span>😮</span> Surprised</button><button type="button" data-reaction="excited"><span>✨</span> Excited</button><button type="button" data-reaction="curious"><span>🤔</span> Curious</button><button type="button" data-reaction="sleepy"><span>🥱</span> Sleepy</button><button type="button" data-reaction="thinking"><span>💭</span> Thinking</button><button type="button" data-reaction="love"><span>💖</span> Loving</button><button type="button" data-reaction="victory"><span>💪</span> Victory</button></div>
+          <div class="control-divider"></div><div class="switch-row"><div><b>Automatic demo</b><small>Cycle through moods &amp; directions</small></div><button class="toggle" id="auto-toggle" type="button" role="switch" aria-checked="false" aria-label="Automatic demo"><span></span></button></div>
+          <div class="switch-row"><div><b>Ambient motion</b><small>Breathing, micro-bounce &amp; blinking</small></div><button class="toggle is-on" id="motion-toggle" type="button" role="switch" aria-checked="true" aria-label="Ambient motion"><span></span></button></div>
+          <button class="button button-dark random-button" id="random-button" type="button">Surprise me <span>✦</span></button>
+          <div class="control-footer"><span>NO LIBRARIES. NO TRACKING. PURE JOY.</span><span>↗</span></div>
+        </aside>
+      </div>
+      <div class="direction-strip"><div class="direction-heading"><span class="micro-label">HEAD TRACKING</span><strong>Look in any direction</strong><small>Move the cursor, or tap an arrow on mobile.</small></div><div class="direction-buttons" id="direction-buttons"><button data-direction="up-left" aria-label="Look up left" title="Up left">↖</button><button data-direction="up" aria-label="Look up" title="Up">↑</button><button data-direction="up-right" aria-label="Look up right" title="Up right">↗</button><button data-direction="left" aria-label="Look left" title="Left">←</button><button data-direction="center" class="active" aria-label="Look forward" title="Center">•</button><button data-direction="right" aria-label="Look right" title="Right">→</button><button data-direction="down-left" aria-label="Look down left" title="Down left">↙</button><button data-direction="down" aria-label="Look down" title="Down">↓</button><button data-direction="down-right" aria-label="Look down right" title="Down right">↘</button></div></div>
+    </section>
+    <section id="reactions" class="section section-blue"><div class="shell"><div class="section-intro"><div><div class="section-kicker">02 / THE EMOTION COLLECTION</div><h2>So many <em>little moods.</em></h2><p>Each expression is a transparent PNG; the motion engine preloads frames and smooths pointer tracking to avoid jarring swaps.</p></div><a href="#library" class="text-link">See the full asset library <span>↗</span></a></div><div class="mood-showcase" id="mood-showcase"></div></div></section>
+    <section id="library" class="section shell assets-section"><div class="section-intro"><div><div class="section-kicker">03 / THE ASSET LIBRARY</div><h2>Every frame. <em>All yours.</em></h2><p>View, zoom, and download each exact-resolution PNG. The two complete master sheets are also included.</p></div><div class="asset-counter" id="asset-counter">18 ORIGINAL FRAMES</div></div><div class="asset-toolbar"><div class="filters" id="filters"><button type="button" class="selected" data-filter="all">All frames <span>18</span></button><button type="button" data-filter="directions">Directions <span>9</span></button><button type="button" data-filter="reactions">Emotions <span>9</span></button></div><label class="search-box"><span>⌕</span><input id="asset-search" type="search" autocomplete="off" placeholder="Search an expression…" aria-label="Search images"></label></div><div id="asset-gallery" class="asset-gallery" aria-live="polite"></div><div class="masters"><div><div class="micro-label">ORIGINAL 3×3 ARTWORK</div><h3>Made from the master sheets.</h3><p>Both unmodified 1254×1254 source images are kept in the repository so you can regenerate assets, audit pixel data, or create new animations later.</p></div><div class="master-links"><a href="./assets/originals/directions-master.png" download>Download direction sheet <span>↓</span></a><a href="./assets/originals/reactions-master.png" download>Download emotion sheet <span>↓</span></a></div></div></section>
+    <section class="last-call shell"><div><div class="section-kicker">A LITTLE CHARACTER WITH A BIG PURPOSE</div><h2>Stay curious. <em>Keep exploring.</em></h2><p>ERA Lab · Emerging &amp; Responsible Agentic Systems</p><a class="button button-primary" href="#playground">One more interaction <span>↗</span></a></div><img src="./assets/reactions/victory.png" alt="ERA Lab mascot cheering enthusiastically" loading="lazy"></section>
+  </main>
+  <footer class="footer shell"><div class="brand"><span class="brand-icon">✳</span><span>ERA <strong>Lab</strong></span></div><span>MADE FOR ERALAB · 2026</span><a href="#top">BACK TO TOP ↑</a></footer>
+  <div class="asset-modal" id="asset-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title" aria-hidden="true"><div class="modal-backdrop" data-close="true"></div><div class="modal-content"><div class="modal-header"><div><div class="micro-label">TRANSPARENT PNG · ORIGINAL PIXELS</div><h3 id="modal-title">Asset preview</h3></div><button type="button" id="modal-close" aria-label="Close preview">×</button></div><div class="modal-picture"><img id="modal-img" alt="Full asset preview"></div><div class="modal-actions"><button type="button" class="button button-outline" id="zoom-button">View at 1:1</button><a class="button button-primary" id="modal-download" href="#" download>Download PNG ↓</a></div></div></div>
+</body>
+</html>

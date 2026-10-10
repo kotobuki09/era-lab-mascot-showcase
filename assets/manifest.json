@@ -1,0 +1,382 @@
+{
+  "version": "2.0.0",
+  "character": "ERA Lab Male Researcher",
+  "directions": [
+    {
+      "id": "up-left",
+      "label": "Up Left",
+      "path": "assets/directions/up-left.png",
+      "width": 512,
+      "height": 512,
+      "sourceIndex": 0,
+      "sourceBox": [
+        0,
+        0,
+        418,
+        418
+      ],
+      "opaqueBounds": [
+        0,
+        13,
+        418,
+        418
+      ]
+    },
+    {
+      "id": "up",
+      "label": "Up",
+      "path": "assets/directions/up.png",
+      "width": 512,
+      "height": 512,
+      "sourceIndex": 1,
+      "sourceBox": [
+        418,
+        0,
+        836,
+        418
+      ],
+      "opaqueBounds": [
+        0,
+        14,
+        418,
+        418
+      ]
+    },
+    {
+      "id": "up-right",
+      "label": "Up Right",
+      "path": "assets/directions/up-right.png",
+      "width": 512,
+      "height": 512,
+      "sourceIndex": 2,
+      "sourceBox": [
+        836,
+        0,
+        1254,
+        418
+      ],
+      "opaqueBounds": [
+        0,
+        15,
+        368,
+        418
+      ]
+    },
+    {
+      "id": "left",
+      "label": "Left",
+      "path": "assets/directions/left.png",
+      "width": 512,
+      "height": 512,
+      "sourceIndex": 3,
+      "sourceBox": [
+        0,
+        418,
+        418,
+        836
+      ],
+      "opaqueBounds": [
+        49,
+        4,
+        402,
+        413
+      ]
+    },
+    {
+      "id": "center",
+      "label": "Center",
+      "path": "assets/directions/center.png",
+      "width": 512,
+      "height": 512,
+      "sourceIndex": 4,
+      "sourceBox": [
+        418,
+        418,
+        836,
+        836
+      ],
+      "opaqueBounds": [
+        45,
+        4,
+        373,
+        413
+      ]
+    },
+    {
+      "id": "right",
+      "label": "Right",
+      "path": "assets/directions/right.png",
+      "width": 512,
+      "height": 512,
+      "sourceIndex": 5,
+      "sourceBox": [
+        836,
+        418,
+        1254,
+        836
+      ],
+      "opaqueBounds": [
+        15,
+        4,
+        369,
+        413
+      ]
+    },
+    {
+      "id": "down-left",
+      "label": "Down Left",
+      "path": "assets/directions/down-left.png",
+      "width": 512,
+      "height": 512,
+      "sourceIndex": 6,
+      "sourceBox": [
+        0,
+        836,
+        418,
+        1254
+      ],
+      "opaqueBounds": [
+        47,
+        0,
+        402,
+        404
+      ]
+    },
+    {
+      "id": "down",
+      "label": "Down",
+      "path": "assets/directions/down.png",
+      "width": 512,
+      "height": 512,
+      "sourceIndex": 7,
+      "sourceBox": [
+        418,
+        836,
+        836,
+        1254
+      ],
+      "opaqueBounds": [
+        5,
+        0,
+        410,
+        404
+      ]
+    },
+    {
+      "id": "down-right",
+      "label": "Down Right",
+      "path": "assets/directions/down-right.png",
+      "width": 512,
+      "height": 512,
+      "sourceIndex": 8,
+      "sourceBox": [
+        836,
+        836,
+        1254,
+        1254
+      ],
+      "opaqueBounds": [
+        17,
+        0,
+        372,
+        404
+      ]
+    }
+  ],
+  "reactions": [
+    {
+      "id": "calm",
+      "label": "Calm",
+      "path": "assets/reactions/calm.png",
+      "width": 512,
+      "height": 512,
+      "sourceIndex": 0,
+      "sourceBox": [
+        0,
+        0,
+        418,
+        418
+      ],
+      "opaqueBounds": [
+        46,
+        21,
+        404,
+        418
+      ]
+    },
+    {
+      "id": "joy",
+      "label": "Joy",
+      "path": "assets/reactions/joy.png",
+      "width": 512,
+      "height": 512,
+      "sourceIndex": 1,
+      "sourceBox": [
+        418,
+        0,
+        836,
+        418
+      ],
+      "opaqueBounds": [
+        24,
+        22,
+        388,
+        418
+      ]
+    },
+    {
+      "id": "surprised",
+      "label": "Surprised",
+      "path": "assets/reactions/surprised.png",
+      "width": 512,
+      "height": 512,
+      "sourceIndex": 2,
+      "sourceBox": [
+        836,
+        0,
+        1254,
+        418
+      ],
+      "opaqueBounds": [
+        14,
+        21,
+        406,
+        418
+      ]
+    },
+    {
+      "id": "excited",
+      "label": "Excited",
+      "path": "assets/reactions/excited.png",
+      "width": 512,
+      "height": 512,
+      "sourceIndex": 3,
+      "sourceBox": [
+        0,
+        418,
+        418,
+        836
+      ],
+      "opaqueBounds": [
+        26,
+        18,
+        418,
+        418
+      ]
+    },
+    {
+      "id": "curious",
+      "label": "Curious",
+      "path": "assets/reactions/curious.png",
+      "width": 512,
+      "height": 512,
+      "sourceIndex": 4,
+      "sourceBox": [
+        418,
+        418,
+        836,
+        836
+      ],
+      "opaqueBounds": [
+        6,
+        18,
+        405,
+        418
+      ]
+    },
+    {
+      "id": "sleepy",
+      "label": "Sleepy",
+      "path": "assets/reactions/sleepy.png",
+      "width": 512,
+      "height": 512,
+      "sourceIndex": 5,
+      "sourceBox": [
+        836,
+        418,
+        1254,
+        836
+      ],
+      "opaqueBounds": [
+        28,
+        18,
+        418,
+        418
+      ]
+    },
+    {
+      "id": "thinking",
+      "label": "Thinking",
+      "path": "assets/reactions/thinking.png",
+      "width": 512,
+      "height": 512,
+      "sourceIndex": 6,
+      "sourceBox": [
+        0,
+        836,
+        418,
+        1254
+      ],
+      "opaqueBounds": [
+        0,
+        0,
+        404,
+        418
+      ]
+    },
+    {
+      "id": "love",
+      "label": "Love",
+      "path": "assets/reactions/love.png",
+      "width": 512,
+      "height": 512,
+      "sourceIndex": 7,
+      "sourceBox": [
+        418,
+        836,
+        836,
+        1254
+      ],
+      "opaqueBounds": [
+        2,
+        0,
+        418,
+        418
+      ]
+    },
+    {
+      "id": "victory",
+      "label": "Victory",
+      "path": "assets/reactions/victory.png",
+      "width": 512,
+      "height": 512,
+      "sourceIndex": 8,
+      "sourceBox": [
+        836,
+        836,
+        1254,
+        1254
+      ],
+      "opaqueBounds": [
+        0,
+        0,
+        418,
+        418
+      ]
+    }
+  ],
+  "originals": [
+    {
+      "kind": "directions",
+      "path": "assets/originals/directions-master.png",
+      "width": 1254,
+      "height": 1254
+    },
+    {
+      "kind": "reactions",
+      "path": "assets/originals/reactions-master.png",
+      "width": 1254,
+      "height": 1254
+    }
+  ]
+}

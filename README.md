@@ -1,29 +1,26 @@
-# ERA Lab Mascot Showcase
+# ERA Lab Mascot Showcase v6 — page-mascot rig
 
-An animated, dependency-free mascot showcase for ERA Lab's **male researcher character**, preserving the original black hair, rectangular glasses and white/navy orbit hoodie artwork.
+**Live:** https://kotobuki09.github.io/era-lab-mascot-showcase/
 
-**Latest release: v5.0 — smoother cursor tracking.** All nine head directions and nine expression poses use the original 512×512 transparent PNG exports. The v5 engine keeps every frame mounted and decoded, uses angular direction sectors with a center dead zone and boundary hysteresis, and moves the sprite via a small GPU-friendly spring transform. Switching poses no longer swaps `img.src` or crossfades two faces, and periodic full-face "fake blinking" has been removed. The image library, mobile direction buttons, and reduced-motion setting remain available.
+Based on [nilbuild/page-mascot](https://github.com/nilbuild/page-mascot) by Kamran Ahmed (MIT). The pointer angle selects a direction cell with the original 70px dead zone and 0.12rad hysteresis. Two always-mounted 3×3 sheets switch through CSS `background-position`, while click reactions use the reference's squash animation.
 
-## Live site and deployment
+## What actually fixes the jitter
 
-**Website:** https://kotobuki09.github.io/era-lab-mascot-showcase/
+In prior releases, the nine original drawings had **different white/navy hoodie, collar, shoulder and planet-logo pixels**. Faster JS could not remove this visual jump.
 
-**Deployment:** GitHub Pages via [Verify and deploy ERA Lab mascot](https://github.com/kotobuki09/era-lab-mascot-showcase/actions/workflows/pages.yml). The site is built from the isolated static project and published automatically on `main` updates. The workflow runs PNG/checksum and JavaScript/motion tests before upload.
+The new `scripts/build_rig.py` deterministically creates:
+- `dist/assets/rig/body.webp`: **one permanently fixed torso** extracted from the approved original front-facing artwork.
+- `dist/assets/rig/directions.webp`: nine **head-only** direction poses.
+- `dist/assets/rig/reactions.webp`: nine **head-only** expression poses.
 
-**Last verified release:** [v5.0 deployment (successful)](https://github.com/kotobuki09/era-lab-mascot-showcase/actions/runs/38110878550). Public browser checks also confirmed the mascot, direction controls, reaction buttons and 18-frame asset library.
+Only the head sheet position changes. There is no full-body image replacement or crossfade. All approved source PNGs and the asset gallery remain intact; **none of the rejected AI-generated images are used**.
 
-This repository **does not publish to or modify** the separate [Sharper Night](https://github.com/kotobuki09/kotobuki09.github.io) user-site repository. The deployment workflow checks that it runs only in `kotobuki09/era-lab-mascot-showcase`.
+The build runs on GitHub Actions after Node tests. Rebuild locally with `python -m pip install -r scripts/requirements.txt && python scripts/build_rig.py --source assets --dest dist/assets/rig`. Run the tests with `node --test tests/verify.mjs tests/engine.test.mjs`.
 
-## Artwork and implementation
+The mascot still has nine discrete head directions, not a continuously rigged 3D head. Some neck edges may differ slightly because the source expressions were hand-drawn separately.
 
-- 18 original, transparent 512×512 PNG direction/reaction frames live under `assets/directions/` and `assets/reactions/`.
-- Two unmodified 1254×1254 master sheets are preserved under `assets/originals/`.
-- Shoulder/hoodie framing uses the already aligned frame exports without changing the source artwork.
-- Direction changes follow the pointer's angle with an eight-sector map, dead-zone and angular hysteresis. Head pose selection is discrete because the artwork contains nine directions, not a rigged model.
-- Pose layers are decoded once and switched without ghosting or synchronous layout reads. Fine spring motion between selections is separate from the frame compositor.
-- Keyboard, mobile arrow buttons, reduced-motion preference, gallery filters, zoom and PNG downloads remain available.
-- Node tests can be run with `node --test tests/verify.mjs tests/engine.test.mjs`; no `npm install` or build tool is required.
+## Isolation and attribution
 
-## Rendering limitation
+GitHub Pages deploys only the `kotobuki09/era-lab-mascot-showcase` repository project; the separate Sharper Night user site `kotobuki09/kotobuki09.github.io` is untouched.
 
-Nine authored directions cannot produce continuous, anatomically accurate head rotation. Achieving actual smooth intermediate head poses would require additional aligned in-between frames or a rigged 2D/3D character. The current v5 update removes avoidable animation stutter and visual double-exposure without inventing or distorting the approved mascot artwork.
+The angle tracking and click squash are adapted from [page-mascot](https://github.com/nilbuild/page-mascot), distributed under the MIT license. License text: `THIRD_PARTY_LICENSES/page-mascot-MIT.txt`.

@@ -40,6 +40,19 @@ jobs:
           touch dist/.nojekyll
       - name: Set up GitHub Pages
         uses: actions/configure-pages@v5
+      - name: Prepare sprite builder Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: scripts/requirements.txt
+      - name: Generate stationary-body page-mascot atlases
+        run: |
+          python -m pip install -r scripts/requirements.txt
+          python scripts/build_rig.py --source assets --dest dist/assets/rig
+          test -s dist/assets/rig/body.webp
+          test -s dist/assets/rig/directions.webp
+          test -s dist/assets/rig/reactions.webp
       - name: Upload production site
         uses: actions/upload-pages-artifact@v3
         with:

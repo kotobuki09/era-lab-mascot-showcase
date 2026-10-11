@@ -3,54 +3,56 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {join,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
-import vm from 'node:vm';
 const root=join(dirname(fileURLToPath(import.meta.url)),'..');
-const src=readFileSync(join(root,'src/main.js'),'utf8');
-function extractFunction(name){
-  const begin=src.indexOf('function '+name+'(');
-  assert.ok(begin>=0,name+' should exist');
-  let start=src.indexOf('{',begin),depth=0, end=start;
-  for(;end<src.length;end++){
-    if(src[end]==='{')depth++;
-    if(src[end]==='}'&&!--depth)break;
-  }
-  return src.slice(begin,end+1);
-}
-test('angular cursor sectors follow eight directions with center deadzone',()=>{
-  const calc=vm.runInNewContext('('+extractFunction('chooseSector')+')');
-  assert.equal(calc(0,0,-1,60),-1);
-  assert.equal(calc(55,0,-1,60),-1);
-  assert.equal(calc(120,0,-1,60),0);
-  assert.equal(calc(120,120,-1,60),1);
-  assert.equal(calc(0,120,-1,60),2);
-  assert.equal(calc(-120,120,-1,60),3);
-  assert.equal(calc(-120,0,-1,60),4);
-  assert.equal(calc(-120,-120,-1,60),5);
-  assert.equal(calc(0,-120,-1,60),6);
-  assert.equal(calc(120,-120,-1,60),7);
+const js=readFileSync(join(root,'src/main.js'),'utf8');
+const css=readFileSync(join(root,'src/styles.css'),'utf8');
+const html=readFileSync(join(root,'index.html'),'utf8');
+const rig=readFileSync(join(root,'scripts/build_rig.py'),'utf8');
+test('based on page-mascot: two fixed 3x3 background-position layers',()=>{
+  assert.match(js,/function cellPosition\(index\)/);
+  assert.match(js,/\(index%3\)\*50/);
+  assert.match(js,/directionSheet\.style\.backgroundPosition=cellPosition\(index\)/);
+  assert.match(js,/reactionSheet\.style\.backgroundPosition=cellPosition\(index\)/);
+  assert.match(css,/background-size:300% 300%/);
+  assert.match(css,/background-image:url\('\.\.\/assets\/rig\/directions\.webp'\)/);
+  assert.match(css,/background-image:url\('\.\.\/assets\/rig\/reactions\.webp'\)/);
 });
-test('hysteresis holds edges and avoids center flicker',()=>{
-  const calc=vm.runInNewContext('('+extractFunction('chooseSector')+')');
-  assert.equal(calc(55,0,0,60),0);
-  assert.equal(calc(47,0,0,60),-1);
-  assert.equal(calc(Math.cos(.45)*120,Math.sin(.45)*120,0,60),0);
-  assert.equal(calc(Math.cos(.7)*120,Math.sin(.7)*120,0,60),1);
+test('the body is one immutable image and is never changed by JS',()=>{
+  assert.match(html,/id="mascot-body" class="mascot-static-body" src="\.\/assets\/rig\/body\.webp"/);
+  assert.match(html,/id="mascot-directions"/);
+  assert.match(html,/id="mascot-reactions"/);
+  assert.doesNotMatch(js,/mascot-body|sprite-base|sprite-next|frameNodes/);
+  assert.doesNotMatch(js.slice(js.indexOf('function setFrame('),js.indexOf('function say(')),/\.src\s*=/);
+  assert.match(rig,/immutable_body/);
+  assert.match(rig,/source \/ "directions\/center\.png"/);
 });
-test('persistent decoded images avoid src swaps and ghosted crossfades',()=>{
-  assert.match(src,/node\.decode\(\)/);
-  assert.match(src,/spriteHost\.append\(node\)/);
-  assert.match(src,/frameNodes = new Map\(\), decoded = new Set\(\)/);
-  assert.doesNotMatch(extractFunction('commitFrame'),/\.src\s*=|offsetWidth|setTimeout/);
-  assert.doesNotMatch(src,/TRANSITION_MS|activeFade|fadeTimer|next\.src/);
-  const css=readFileSync(join(root,'src/styles.css'),'utf8');
-  assert.match(css,/\.sprite-frame\.is-active\{opacity:1;visibility:visible\}/);
-  assert.match(src,/spriteLook\.style\.transform/);
-  assert.doesNotMatch(src,/scheduleBlink\(\)/);
+test('angular tracking uses official page-mascot sector hysteresis and deadzone',()=>{
+  assert.match(js,/const CLOCKWISE=\['right','down-right','down','down-left','left','up-left','up','up-right'\]/);
+  assert.match(js,/const SECTOR=Math\.PI\*2\/CLOCKWISE\.length/);
+  assert.match(js,/const HYSTERESIS=\.12/);
+  assert.match(js,/const DEAD_ZONE=70/);
+  assert.match(js,/Math\.hypot\(dx,dy\)<DEAD_ZONE/);
+  assert.match(js,/Math\.abs\(wrap\(angle-current\*SECTOR\)\)<SECTOR\/2\+HYSTERESIS/);
+  assert.match(js,/window\.addEventListener\('scroll',aim/);
 });
-test('direction graphics have a separate gaze wrapper from breathing and reaction',()=>{
-  const html=readFileSync(join(root,'index.html'),'utf8');
-  assert.match(html,/<div class="sprite-look"><div class="sprite-breathe">/);
-  const styles=readFileSync(join(root,'src/styles.css'),'utf8');
-  assert.match(styles,/\.sprite-look\{position:absolute/);
-  assert.match(styles,/body\.motion-off \.sprite-look\{transform:none!important/);
+test('reactions change head pose, preserve torso, then return to tracking',()=>{
+  assert.match(js,/setFrame\('reactions:'\+id\)/);
+  assert.match(js,/setFrame\('directions:'\+state\.wantedDirection\)/);
+  assert.match(js,/stage\.animate\(SQUASH,\{duration:420,easing:'linear'\}\)/);
+  assert.match(js,/state\.reaction=null/);
+});
+test('source artwork and the gallery remain intact',()=>{
+  assert.match(html,/id="asset-gallery"/);
+  assert.match(html,/assets\/originals\/directions-master\.png/);
+  assert.match(html,/assets\/originals\/reactions-master\.png/);
+  assert.match(js,/function renderGallery\(\)/);
+  assert.match(rig,/"up-left", "up", "up-right"/);
+  assert.match(rig,/"calm", "joy", "surprised"/);
+});
+test('accessibility and reduced motion are respected',()=>{
+  assert.match(js,/prefers-reduced-motion: reduce/);
+  assert.match(js,/if\(state\.motion && typeof stage\.animate/);
+  assert.match(js,/e\.key==='Enter'/);
+  assert.match(js,/event\.pointerType==='touch'/);
+  assert.match(html,/id="motion-toggle"/);
 });

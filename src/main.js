@@ -10,71 +10,42 @@
   const $$ = (s) => [...document.querySelectorAll(s)];
   const D = new Map(manifest.directions.map(x => [x.id, x]));
   const R = new Map(manifest.reactions.map(x => [x.id, x]));
-  // A small two-layer compositor: preload each frame once and only paint decoded images.
-  // Direction changes are throttled by hysteresis below, not by a fade queue.
+  // Reference: nilbuild/page-mascot (MIT). Two persistent 3x3 sprite
+  // sheets follow the pointer. The hoodie is one immutable third layer.
   const state = {wantedDirection:'center', reaction:null, auto:false, motion:true, lastPointer:Date.now(), mode:'all', query:'', activeFrame:'directions:center', x:0, y:0, initPointer:false};
-  const base = $('#sprite-base'), spriteHost = $('.sprite-breathe'), spriteLook = $('.sprite-look'), stage = $('#mascot-stage'), scene = $('#play-scene'), speech = $('#scene-speech'), status = $('#direction-status');
-  const randomButton = $('#random-button'), autoToggle = $('#auto-toggle'), motionToggle = $('#motion-toggle');
-  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (reduceMotion) {state.motion=false;motionToggle.classList.remove('is-on');motionToggle.setAttribute('aria-checked','false');document.body.classList.add('motion-off');}
-  const speechMap = {calm:'Ah, a peaceful moment ☁', joy:'This made my day! ✦', surprised:'Oh! You caught me!', excited:'That is SO cool! ✨', curious:'Hmm… interesting. 🤔', sleepy:'Five more minutes… 💤', thinking:'Let me think about that.', love:'Sending some love! 💕', victory:'Yes! We did it! 🚀'};
-  const animMap = {surprised:'shake', curious:'poke', sleepy:'poke', joy:'pop', excited:'pop', love:'pop', victory:'pop', thinking:'poke', calm:'poke'};
-  // Decode each PNG once, keep its image node mounted, and only toggle the
-  // active layer. No img.src swapping, forced reflow, or crossfade ghosting.
-  const preloaded = new Map(), frameNodes = new Map(), decoded = new Set();
-  const assetPath = key => {
-    const [kind,id] = key.split(':');
-    const item = (kind === 'directions' ? D : R).get(id);
-    if (!item) throw new Error('Unknown frame ' + key);
-    return assetURL(item.path);
-  };
-  let displayed = 'directions:center', requested = displayed, activeNode = null;
-  let reactionTimer = 0, bubbleTimer = 0, autoTimer = 0, actionTimer = 0;
-  function commitFrame(key) {
-    if (requested !== key || !decoded.has(key)) return;
-    const node = frameNodes.get(key);
-    if (!node || node === activeNode) return;
-    if (activeNode) activeNode.classList.remove('is-active');
-    node.classList.add('is-active');
-    activeNode = node;
-    base.classList.add('is-hidden');
-    base.setAttribute('aria-hidden','true');
-    displayed = key;
-    state.activeFrame = key;
+  const stage=$('#mascot-stage'), scene=$('#play-scene'), speech=$('#scene-speech'), status=$('#direction-status');
+  const directionSheet=$('#mascot-directions'), reactionSheet=$('#mascot-reactions');
+  const randomButton=$('#random-button'), autoToggle=$('#auto-toggle'), motionToggle=$('#motion-toggle');
+  const reduceMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduceMotion){state.motion=false;motionToggle.classList.remove('is-on');motionToggle.setAttribute('aria-checked','false');document.body.classList.add('motion-off');}
+  const speechMap={calm:'Ah, a peaceful moment ☁',joy:'This made my day! ✦',surprised:'Oh! You caught me!',excited:'That is SO cool! ✨',curious:'Hmm… interesting. 🤔',sleepy:'Five more minutes… 💤',thinking:'Let me think about that.',love:'Sending some love! 💕',victory:'Yes! We did it! 🚀'};
+  let reactionTimer=0,bubbleTimer=0,autoTimer=0;
+  const order={directions:manifest.directions.map(x=>x.id),reactions:manifest.reactions.map(x=>x.id)};
+  function cellPosition(index){return `${(index%3)*50}% ${Math.floor(index/3)*50}%`;}
+  function setFrame(key){
+    const [kind,id]=key.split(':');
+    const index=order[kind]?.indexOf(id)??-1;
+    if(index<0)return;
+    if(kind==='directions'){
+      directionSheet.style.backgroundPosition=cellPosition(index);
+      reactionSheet.classList.remove('is-visible');
+    }else{
+      reactionSheet.style.backgroundPosition=cellPosition(index);
+      reactionSheet.classList.add('is-visible');
+    }
+    state.activeFrame=key;
   }
-  function preloadImage(key) {
-    if (preloaded.has(key)) return preloaded.get(key);
-    const node = new Image();
-    node.className = 'sprite sprite-frame';
-    node.alt = '';
-    node.decoding = 'async';
-    node.loading = 'eager';
-    node.setAttribute('aria-hidden','true');
-    node.src = assetPath(key);
-    frameNodes.set(key,node);
-    spriteHost.append(node);
-    const ready = typeof node.decode === 'function'
-      ? node.decode()
-      : new Promise((resolve,reject) => {
-          if (node.complete && node.naturalWidth) resolve();
-          else { node.onload = resolve; node.onerror = reject; }
-        });
-    const promise = ready.then(() => {
-      decoded.add(key);
-      if (requested === key) commitFrame(key);
-      return node;
-    }).catch(() => {
-      console.warn('ERA mascot frame could not be decoded: ' + key);
-      return null;
-    });
-    preloaded.set(key,promise);
-    return promise;
-  }
-  function setFrame(key) {
-    if (!frameNodes.has(key)) return;
-    requested = key;
-    if (decoded.has(key)) commitFrame(key);
-    // Pending decode commits only the most recently requested frame.
+  // Faithful to page-mascot: each cell is a background-position step,
+  // neither image is ever replaced. The body image never changes.
+  const SQUASH=[
+    {transform:'scale(1,1)',easing:'ease-in'},
+    {transform:'scale(1.10,.86)',offset:.18,easing:'ease-out'},
+    {transform:'scale(.95,1.08)',offset:.45,easing:'ease-in-out'},
+    {transform:'scale(1.03,.97)',offset:.72,easing:'ease-in-out'},
+    {transform:'scale(1,1)'}
+  ];
+  function boop(){
+    if(state.motion && typeof stage.animate==='function')stage.animate(SQUASH,{duration:420,easing:'linear'});
   }
   function say(txt,duration=1400){
     clearTimeout(bubbleTimer);speech.textContent=txt;
@@ -82,53 +53,35 @@
   }
   let markedDirection='center';
   function markDirection(dir){
-    if(markedDirection===dir)return;
+    if(markedDirection===dir){status.textContent='LOOKING · '+dir.toUpperCase().replaceAll('-',' ');return;}
     markedDirection=dir;
     $$('[data-direction]').forEach(b=>b.classList.toggle('active',b.dataset.direction===dir));
     status.textContent='LOOKING · '+dir.toUpperCase().replaceAll('-',' ');
   }
   function setDirection(dir,{manual=false}={}){
     if(!D.has(dir))return;
-    state.wantedDirection=dir;markDirection(dir);
-    if (manual) {
-      clearAuto();
-      state.lastPointer = Date.now();
-      gaze.holdUntil = performance.now() + 1100;
-      gaze.pointerDirty = false;
-      gaze.sector = sectorOrder.indexOf(dir);
-      const i = sectors.indexOf(dir);
-      gaze.targetX = (i % 3 - 1) * .55;
-      gaze.targetY = (Math.floor(i / 3) - 1) * .52;
-      startGaze();
-      say('Looking ' + dir.replaceAll('-',' ') + ' ✳',750);
-    } else if (state.auto) {
-      const i = sectors.indexOf(dir);
-      gaze.targetX = (i % 3 - 1) * .55;
-      gaze.targetY = (Math.floor(i / 3) - 1) * .52;
-      startGaze();
-    }
+    state.wantedDirection=dir;
+    markDirection(dir);
+    if(manual){clearAuto();pointerHoldUntil=performance.now()+950;say('Looking '+dir.replaceAll('-',' ')+' ✳',750);}
     if(!state.reaction)setFrame('directions:'+dir);
   }
-  function showReaction(id,{fromAuto=false,blink=false}={}){
+  function showReaction(id,{fromAuto=false}={}){
     if(!R.has(id))return;
     if(!fromAuto)clearAuto();
-    clearTimeout(reactionTimer);clearTimeout(actionTimer);
-    state.reaction=id;setFrame('reactions:'+id);
+    clearTimeout(reactionTimer);
+    state.reaction=id;
+    setFrame('reactions:'+id);
     $$('[data-reaction]').forEach(b=>b.classList.toggle('selected',b.dataset.reaction===id));
-    if(!blink)say(speechMap[id],0);
-    stage.classList.remove('poke','shake','pop');
-    if(state.motion&&!blink){
-      // Reflow only at reaction boundaries, not every animation frame.
-      void stage.offsetWidth;stage.classList.add(animMap[id]||'pop');
-      actionTimer=setTimeout(()=>stage.classList.remove('poke','shake','pop'),650);
-    }
-    if(!blink)status.textContent='FEELING · '+id.toUpperCase();
+    say(speechMap[id],0);
+    boop();
+    status.textContent='FEELING · '+id.toUpperCase();
     reactionTimer=setTimeout(()=>{
-      state.reaction=null;stage.classList.remove('poke','shake','pop');
+      state.reaction=null;
       $$('[data-reaction]').forEach(b=>b.classList.remove('selected'));
-      setFrame('directions:'+state.wantedDirection);markDirection(state.wantedDirection);
-      if(!blink)say('Move your cursor. I\'ll follow! ✦',0);
-    },blink?215:id==='sleepy'?2200:1550);
+      setFrame('directions:'+state.wantedDirection);
+      markDirection(state.wantedDirection);
+      say('Move your cursor. I\'ll follow! ✦',0);
+    },id==='sleepy'?2200:1550);
   }
   function randomReaction(){
     const ids=[...R.keys()];let choice=ids[Math.floor(Math.random()*ids.length)];
@@ -152,74 +105,41 @@
     say('Demo mode is on — enjoy! ✨',1300);
   }
 
-  // Koboyo-style angle sectors and dead zone, independent of motion easing.
-  const sectorOrder = ['right','down-right','down','down-left','left','up-left','up','up-right'];
-  const sectors = ['up-left','up','up-right','left','center','right','down-left','down','down-right'];
-  const gaze = {targetX:0,targetY:0,x:0,y:0,sector:-1,clientX:0,clientY:0,hasPointer:false,pointerDirty:false,holdUntil:0,lastTime:0};
-  let gazeRAF = 0;
-  const clamp = (n,lo,hi) => Math.min(hi,Math.max(lo,n));
-  function chooseSector(dx,dy,previous,deadzone) {
-    const radius = Math.hypot(dx,dy);
-    if (radius < (previous === -1 ? deadzone + 12 : Math.max(0,deadzone - 12))) return -1;
-    const angle = Math.atan2(dy,dx), arc = Math.PI / 4;
-    if (previous !== -1 &&
-      Math.abs(Math.atan2(Math.sin(angle - previous*arc),Math.cos(angle - previous*arc))) < arc/2 + .13) return previous;
-    return ((Math.round(angle/arc) % 8) + 8) % 8;
+  // Direct port of the page-mascot angular-sector selection mechanics.
+  const CLOCKWISE=['right','down-right','down','down-left','left','up-left','up','up-right'];
+  const SECTOR=Math.PI*2/CLOCKWISE.length;
+  const HYSTERESIS=.12;
+  const DEAD_ZONE=70;
+  let pointer=null,sector=-1,pointerHoldUntil=0;
+  function wrap(angle){return Math.atan2(Math.sin(angle),Math.cos(angle));}
+  function chooseDirection(dx,dy,current){
+    // Keep the center pose stable within the dead zone.
+    if(Math.hypot(dx,dy)<DEAD_ZONE)return {direction:'center',sector:-1};
+    const angle=Math.atan2(dy,dx);
+    if(current!==-1&&Math.abs(wrap(angle-current*SECTOR))<SECTOR/2+HYSTERESIS)
+      return {direction:CLOCKWISE[current],sector:current};
+    const chosen=(Math.round(angle/SECTOR)+CLOCKWISE.length)%CLOCKWISE.length;
+    return {direction:CLOCKWISE[chosen],sector:chosen};
   }
-  function applyPointer() {
-    gaze.pointerDirty = false;
-    if (!gaze.hasPointer || state.auto) return;
-    const rect = stage.getBoundingClientRect();
-    const dx = gaze.clientX - (rect.left + rect.width / 2);
-    const dy = gaze.clientY - (rect.top + rect.height / 2);
-    const sector = chooseSector(dx,dy,gaze.sector,Math.max(48,Math.min(rect.width,rect.height)*.18));
-    if (sector !== gaze.sector) {
-      gaze.sector = sector;
-      setDirection(sector === -1 ? 'center' : sectorOrder[sector]);
-    }
-    gaze.targetX = clamp(dx / (rect.width*.62),-1,1);
-    gaze.targetY = clamp(dy / (rect.height*.62),-1,1);
+  function aim(){
+    if(!pointer||state.auto||performance.now()<pointerHoldUntil||document.body.classList.contains('modal-open'))return;
+    const box=stage.getBoundingClientRect();
+    const dx=pointer.x-(box.left+box.width/2);
+    const dy=pointer.y-(box.top+box.height/2);
+    const chosen=chooseDirection(dx,dy,sector);
+    sector=chosen.sector;
+    if(chosen.direction!==state.wantedDirection)setDirection(chosen.direction);
   }
-  function gazeTick(ts) {
-    gazeRAF = 0;
-    if (!state.motion || document.hidden) return;
-    if (gaze.pointerDirty && ts >= gaze.holdUntil) applyPointer();
-    const dt = clamp(ts - (gaze.lastTime || ts),0,48);
-    gaze.lastTime = ts;
-    const alpha = 1 - Math.exp(-dt / 88);
-    gaze.x += (gaze.targetX - gaze.x) * alpha;
-    gaze.y += (gaze.targetY - gaze.y) * alpha;
-    spriteLook.style.transform = 'translate3d(' + (gaze.x*4).toFixed(2) + 'px,' + (gaze.y*3).toFixed(2) + 'px,0) rotate(' + (gaze.x*1.15).toFixed(2) + 'deg)';
-    if (gaze.pointerDirty || Math.abs(gaze.x-gaze.targetX)>.003 || Math.abs(gaze.y-gaze.targetY)>.003) startGaze();
-  }
-  function startGaze() {
-    if (!gazeRAF && state.motion && !document.hidden) gazeRAF = requestAnimationFrame(gazeTick);
-  }
-  function updateTarget(clientX,clientY) {
-    gaze.clientX = clientX;
-    gaze.clientY = clientY;
-    gaze.hasPointer = true;
-    gaze.pointerDirty = true;
-    startGaze();
-  }
-  window.addEventListener('pointermove',e => {
-    if (e.pointerType === 'touch' || state.auto || document.body.classList.contains('modal-open') || performance.now() < gaze.holdUntil) return;
-    state.x = e.clientX; state.y = e.clientY;
-    state.lastPointer = Date.now(); state.initPointer = true;
-    updateTarget(e.clientX,e.clientY);
+  window.addEventListener('pointermove',event=>{
+    if(event.pointerType==='touch')return;
+    pointer={x:event.clientX,y:event.clientY};
+    state.lastPointer=Date.now();
+    aim();
   },{passive:true});
-  const reaim = () => {
-    if (!gaze.hasPointer || state.auto) return;
-    gaze.pointerDirty = true;
-    startGaze();
-  };
-  window.addEventListener('scroll',reaim,{passive:true});
-  window.addEventListener('resize',reaim,{passive:true});
-  window.addEventListener('pointerleave',() => {
-    if (state.auto || performance.now() < gaze.holdUntil) return;
-    gaze.hasPointer = false; gaze.pointerDirty = false; gaze.sector = -1;
-    gaze.targetX = 0; gaze.targetY = 0;
-    setDirection('center'); startGaze();
+  window.addEventListener('scroll',aim,{passive:true});
+  window.addEventListener('resize',aim,{passive:true});
+  window.addEventListener('pointerleave',()=>{
+    if(!state.auto){pointer=null;sector=-1;setDirection('center');}
   });
   stage.addEventListener('click',randomReaction);
   stage.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();randomReaction();}});
@@ -231,10 +151,8 @@
   motionToggle.addEventListener('click',()=>{
     state.motion=!state.motion;document.body.classList.toggle('motion-off',!state.motion);
     motionToggle.classList.toggle('is-on',state.motion);motionToggle.setAttribute('aria-checked',String(state.motion));
-    if(!state.motion){cancelAnimationFrame(gazeRAF);gazeRAF=0;setFrame(requested);}
-    else startGaze();
+    // Motion setting only affects the optional click squash, never tracking.
   });
-  document.addEventListener('visibilitychange',()=>{if(document.hidden){cancelAnimationFrame(gazeRAF);gazeRAF=0;}else{gaze.lastTime=0;startGaze();}});
   // No periodic full-face swap to simulate a blink: no blink asset exists.
 
   // Asset library controls
@@ -284,8 +202,5 @@
   window.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal.classList.contains('open'))closeModal();});
   $('#zoom-button').addEventListener('click',()=>{const isZoom=modalPicture.classList.toggle('zoomed');$('#zoom-button').textContent=isZoom?'Fit to preview':'View at 1:1';});
 
-  // Decode the sprites before they are displayed to prevent the first swap stuttering.
-  for(const item of manifest.directions)preloadImage('directions:'+item.id);
-  for(const item of manifest.reactions)preloadImage('reactions:'+item.id);
-  window.ERA_MASCOT_DEBUG={setDirection,showReaction,setAuto,state,manifest,gaze,setFrame,preloaded,frameNodes,decoded,chooseSector};
+  window.ERA_MASCOT_DEBUG={setDirection,showReaction,setAuto,state,manifest,setFrame,chooseDirection,aim};
 })();

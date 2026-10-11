@@ -9,8 +9,8 @@
 .mascot-static-body{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none}
 .mascot-head-track{position:absolute;inset:0;transform-origin:50% 76%;pointer-events:none}
 .mascot-sheet{position:absolute;inset:0;background-size:300% 300%;background-repeat:no-repeat;background-position:50% 50%;image-rendering:auto;pointer-events:none}
-.mascot-direction-sheet{background-image:url('../assets/rig/directions.webp?v=7');opacity:1}
-.mascot-reaction-sheet{background-image:url('../assets/rig/reactions.webp?v=7');opacity:0;background-position:0% 0%}
+.mascot-direction-sheet{background-image:url('../assets/rig/directions.webp?v=8');opacity:1}
+.mascot-reaction-sheet{background-image:url('../assets/rig/reactions.webp?v=8');opacity:0;background-position:0% 0%}
 .mascot-reaction-sheet.is-visible{opacity:1}
 .mascot-stage:focus-visible{outline:3px solid #2b7cec;outline-offset:6px;border-radius:24px}
 @media(hover:none){.mascot-stage{touch-action:manipulation}.reaction-controls button{min-height:72px}}
@@ -20,3 +20,5 @@
 .mascot-rig{transform:translateZ(0)}
 .mascot-head-track{will-change:auto}
 @media(max-width:660px){.mascot-stage{width:min(76%,264px)}}
+
+/* v8: pixel-accurate collar/seam cleanup, source artwork unchanged. */

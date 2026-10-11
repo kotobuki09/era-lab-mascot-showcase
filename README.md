@@ -28,3 +28,7 @@ The angle tracking and click squash are adapted from [page-mascot](https://githu
 ## V7 — aligned original artwork, not redrawn
 
 V7 addresses the user-visible head snap root cause. The previous rig had dynamic hoodie/collar fragments and a **23-pixel native vertical neck-anchor spread**. The builder now cuts out only skin/hair/head pixels (not clothing), aligns all 18 poses to one neck pivot, verifies the fixed torso after atlas generation, and displays the nine authored directions at a reference-appropriate size. The original approved artwork remains untouched and the algorithm still follows [nilbuild/page-mascot](https://github.com/nilbuild/page-mascot). There is still a discrete nine-pose artistic limit; this is not a 3D rig.
+
+## V8: image artifact repair
+
+Removes the black spurious line behind the collar on the down-right head sprite and the pale ghost band left in the fixed body by the earlier segmentation. Keeps the entire approved 18-PNG source set unchanged. The builder restricts below-cheek outlines to an 8-pixel warm-skin envelope, cuts only the true neck skin from the single hoodie layer, and validates four recorded neck-edge regression regions in every GitHub Pages build. The artwork still has nine discrete directions; this change repairs visual artifacts, not interpolated head rotation.

@@ -48,6 +48,10 @@ def extract_head(image):
     neck=morph(skin&(x>42)&(x<470),17)
     neck=np.asarray(Image.fromarray((neck*255).astype("uint8")).filter(ImageFilter.MaxFilter(9)))>125
     keep[y>=345]&=neck[y>=345]
+    # Keep only dark outlines adjacent to skin below the cheeks: old PNG
+    # drawings contain jacket strands otherwise visible behind the neck.
+    face_support=ndi.binary_dilation(skin,iterations=8)
+    keep[y>=302]&=face_support[y>=302]
     soft=np.asarray(Image.fromarray((keep*255).astype("uint8")).filter(ImageFilter.GaussianBlur(.65)))
     out=src.copy()
     out[...,3]=(out[...,3].astype(np.uint16)*soft.astype(np.uint16)//255).astype("uint8")
@@ -69,23 +73,31 @@ def translate(frame,dx,dy):
     return out
 
 def immutable_body(center,head):
-    # Remove every remnant of the original CENTER face, retain collar colors.
+    # Single approved original hoodie, without old face ghost bands.
     px=np.array(center.convert("RGBA"),copy=True)
-    cut=np.asarray(head.getchannel("A"))>15
-    wider=ndi.binary_dilation(cut,iterations=12)
-    y=np.indices(cut.shape)[0]
-    rgb=px[...,:3].astype(np.int16); r,g,b=rgb[...,0],rgb[...,1],rgb[...,2]
-    navy=(b>r+9)&(b>g+3)&(r<165)
-    white=(r>170)&(g>168)&(b>170)&(np.abs(r-g)<22)
-    garment=navy|white
-    # Keep the high original hood; never allow the old hair silhouette to ghost.
-    remove=(y<294)|((y>=294)&(y<346)&wider&~garment)|((y>=346)&cut)
-    px[...,3][remove]=0
-    fixed=Image.fromarray(px,"RGBA")
+    c=px[...,:3].astype(np.int16)
+    red,green,blue=c[...,0],c[...,1],c[...,2]
+    y=np.indices((CELL,CELL))[0]
+    skin=((red>90)&(red>green+8)&(green>blue+8)&
+          (red>blue+22)&(px[...,3]>25))
+    # Clear all face pixels above the collar, then remove just the real
+    # skin/neck plus a narrow black outline. Do NOT remove navy hood edges.
+    cut=(y<330)
+    for row in range(330,397):
+        xs=np.flatnonzero(skin[row])
+        if xs.size:
+            left=max(0,int(xs.min())-9)
+            right=min(CELL,int(xs.max())+10)
+            cut[row,left:right]=True
+    px[...,3][cut]=0
+    body=Image.fromarray(px,"RGBA")
     backing=Image.new("RGBA",(CELL,CELL))
-    ImageDraw.Draw(backing).ellipse((213,341,299,439),fill=(24,33,57,255))
-    backing.alpha_composite(fixed)
-    return backing
+    # Permanent dark fabric under a movable chibi neck.
+    ImageDraw.Draw(backing).ellipse((186,322,324,422),fill=(19,27,49,255))
+    backing.alpha_composite(body)
+    fixed=np.array(backing)
+    fixed[:330,:,3]=0
+    return Image.fromarray(fixed,"RGBA")
 
 def build(source,dest):
     source,dest=Path(source),Path(dest)
@@ -125,7 +137,7 @@ def build(source,dest):
             assert cell.getchannel("A").getbbox(),(kind,i)
     assert len(frames)==18
     (dest/"alignment-report.json").write_text(json.dumps({
-        "version":"7.0","anchor":list(ANCHOR),"frames":metrics,
+        "version":"8.0","anchor":list(ANCHOR),"frames":metrics,
         "body_source":"assets/directions/center.png",
         "body_is_single_immutable_layer":True,
         "source_artwork_unchanged":True

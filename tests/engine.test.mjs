@@ -14,11 +14,11 @@ test('based on page-mascot: two fixed 3x3 background-position layers',()=>{
   assert.match(js,/directionSheet\.style\.backgroundPosition=cellPosition\(index\)/);
   assert.match(js,/reactionSheet\.style\.backgroundPosition=cellPosition\(index\)/);
   assert.match(css,/background-size:300% 300%/);
-  assert.match(css,/background-image:url\('\.\.\/assets\/rig\/directions\.webp\?v=7'\)/);
-  assert.match(css,/background-image:url\('\.\.\/assets\/rig\/reactions\.webp\?v=7'\)/);
+  assert.match(css,/background-image:url\('\.\.\/assets\/rig\/directions\.webp\?v=8'\)/);
+  assert.match(css,/background-image:url\('\.\.\/assets\/rig\/reactions\.webp\?v=8'\)/);
 });
 test('the body is one immutable image and is never changed by JS',()=>{
-  assert.match(html,/id="mascot-body" class="mascot-static-body" src="\.\/assets\/rig\/body\.webp\?v=7"/);
+  assert.match(html,/id="mascot-body" class="mascot-static-body" src="\.\/assets\/rig\/body\.webp\?v=8"/);
   assert.match(html,/id="mascot-directions"/);
   assert.match(html,/id="mascot-reactions"/);
   assert.doesNotMatch(js,/mascot-body|sprite-base|sprite-next|frameNodes/);

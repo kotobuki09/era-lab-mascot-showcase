@@ -67,3 +67,14 @@ test('reaction animation preserves stage transform and eases crossfade',()=>{
   assert.match(css,/transition:opacity 170ms cubic-bezier\(\.2,\.7,\.2,1\)/);
   assert.match(css,/body\.motion-off \.mascot-sheet\{transition:none!important\}/);
 });
+
+test('all original emotion accessories are foreground layers above the fixed hoodie',()=>{
+  assert.match(html,/id="mascot-fx"/);
+  assert.match(html,/id="mascot-fx-next"/);
+  assert.match(js,/const fxLayers=\[\$\('#mascot-fx'\),\$\('#mascot-fx-next'\)\]/);
+  assert.match(js,/fx\.style\.backgroundPosition=cellPosition\(index\)/);
+  assert.match(js,/fxLayers\.forEach\(layer=>layer\.classList\.remove\('is-visible'\)\)/);
+  assert.match(css,/reactions_fx\.webp\?v=10/);
+  assert.match(css,/\.mascot-fx-sheet\.is-visible\{opacity:1\}/);
+  assert.match(html,/V10\.0/);
+});

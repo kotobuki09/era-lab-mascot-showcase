@@ -54,6 +54,11 @@ jobs:
           test -s dist/assets/rig/directions.webp
           test -s dist/assets/rig/reactions.webp
           python tests/rig_quality.py dist/assets/rig
+      - name: Rebuild and verify detached emoji and gesture foreground
+        run: |
+          python scripts/build_fx.py --source assets --dest dist/assets/rig
+          test -s dist/assets/rig/reactions_fx.webp
+          python tests/fx_quality.py dist
       - name: Browser regression - fixed mascot position and smooth emotions
         run: |
           python -m pip install 'playwright>=1.55,<2'

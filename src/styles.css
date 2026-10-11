@@ -24,3 +24,12 @@ body.motion-off .mascot-sheet{transition:none!important}
 @media(max-width:660px){.mascot-stage{width:min(76%,264px)}}
 
 /* v8: pixel-accurate collar/seam cleanup, source artwork unchanged. */
+
+/* v10: detached emotion icons and gesture/sleeve overlays, above the fixed torso. */
+.mascot-fx-sheet{
+  background-image:url('../assets/rig/reactions_fx.webp?v=10');
+  opacity:0;
+  z-index:3;
+}
+.mascot-fx-sheet.is-visible{opacity:1}
+/* Inherits the head's 170ms opacity transition and motion-off override. */

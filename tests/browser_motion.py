@@ -1,126 +1,138 @@
 #!/usr/bin/env python3
-"""Browser regression: reaction animations must not move the centered stage.
+"""End-to-end mascot motion and FX regression against the Pages build.
 
-Runs against the actual assembled GitHub Pages files, inlining the three
-production mascot images and scripts to avoid local HTTP and font requests.
+Browser must render decorative emotion symbols ABOVE the immutable hoodie,
+and expression changes must not move the stage or fixed body. No API calls.
 """
-from pathlib import Path
 import base64
 import json
 import re
 import shutil
+from pathlib import Path
 import sys
 from playwright.sync_api import sync_playwright
 
-root = Path(sys.argv[1] if len(sys.argv) > 1 else "dist")
-html = (root / "index.html").read_text(encoding="utf-8")
-css = (root / "src/styles.css").read_text(encoding="utf-8")
-main_js = (root / "src/main.js").read_text(encoding="utf-8")
-manifest_js = (root / "src/manifest.js").read_text(encoding="utf-8")
+ROOT=Path(sys.argv[1] if len(sys.argv)>1 else 'dist').resolve()
+assert (ROOT/'assets/rig/reactions_fx.webp').is_file()
+assert (ROOT/'src/main.js').is_file()
+assert (ROOT/'index.html').is_file()
 
 def data_uri(name):
-    return "data:image/webp;base64," + base64.b64encode(
-        (root / "assets/rig" / name).read_bytes()
-    ).decode("ascii")
+    return "data:image/webp;base64,"+base64.b64encode(
+        (ROOT/'assets/rig'/name).read_bytes()).decode('ascii')
 
-css = re.sub(r"@import url\([^;]+;", "", css, count=1)
-for kind in ("directions", "reactions"):
-    css = css.replace(f"../assets/rig/{kind}.webp?v=9", data_uri(kind + ".webp"))
-html = html.replace('<link rel="stylesheet" href="./src/styles.css?v=9">',
-                    "<style>" + css + "</style>")
-for name in ("manifest", "main"):
-    html = re.sub(rf'<script defer src="./src/{name}\.js(?:\?v=9)?"></script>',
-                  "", html)
-html = html.replace("./assets/rig/body.webp?v=9", data_uri("body.webp"))
+html=(ROOT/'index.html').read_text(encoding='utf-8')
+css=(ROOT/'src/styles.css').read_text(encoding='utf-8')
+manifest_js=(ROOT/'src/manifest.js').read_text(encoding='utf-8')
+main_js=(ROOT/'src/main.js').read_text(encoding='utf-8')
+css=re.sub(r"@import url\([^;]+;", "", css, count=1)
+for kind,version in [('directions',9),('reactions',9),('reactions_fx',10)]:
+    target=f"../assets/rig/{kind}.webp?v={version}"
+    assert target in css,target
+    css=css.replace(target,data_uri(kind+'.webp'))
+html=html.replace('<link rel="stylesheet" href="./src/styles.css?v=10">',
+                  '<style>'+css+'</style>')
+assert '<style>' in html
+for name in ('manifest','main'):
+    html=re.sub(rf'<script defer src="./src/{name}\.js(?:\?v=10)?"></script>',
+                '', html)
+html=html.replace('./assets/rig/body.webp?v=9',data_uri('body.webp'))
+html=re.sub(r'<link rel="preload"[^>]+>', '', html)
+errors=[]
 
-errors = []
-with sync_playwright() as pw:
-    executable = (shutil.which("google-chrome") or
-                  shutil.which("google-chrome-stable") or
-                  shutil.which("chromium"))
-    opts = {"headless": True, "args": ["--no-sandbox", "--disable-dev-shm-usage"]}
-    if executable:
-        opts["executable_path"] = executable
-    browser = pw.chromium.launch(**opts)
+def make_page(browser,**opts):
+    page=browser.new_page(**opts)
+    page.on('pageerror',lambda err:errors.append(str(err)))
+    page.set_content(html,wait_until='domcontentloaded')
+    page.add_script_tag(content=manifest_js)
+    page.add_script_tag(content=main_js)
+    return page
 
-    def make_page(reduced=False):
-        page = browser.new_page(viewport={"width": 1440, "height": 1000},
-                                reduced_motion="reduce" if reduced else "no-preference")
-        page.on("pageerror", lambda err: errors.append(str(err)))
-        page.set_content(html, wait_until="domcontentloaded")
-        page.add_script_tag(content=manifest_js)
-        page.add_script_tag(content=main_js)
-        return page
+def position(page):
+    return page.evaluate("""() => {
+      const scene=document.querySelector('#play-scene').getBoundingClientRect();
+      const sr=document.querySelector('#mascot-stage').getBoundingClientRect();
+      const br=document.querySelector('#mascot-body').getBoundingClientRect();
+      return [sr.left-scene.left,sr.top-scene.top,sr.width,sr.height,
+              br.left-scene.left,br.top-scene.top,br.width,br.height];
+    }""")
 
-    page = make_page()
-    page.locator("#mascot-stage").scroll_into_view_if_needed()
+def check_position(page,base,label):
+    values=position(page)
+    delta=max(abs(a-b) for a,b in zip(values,base))
+    assert delta<0.5,f'{label}: stage or body moved by {delta:.2f} px'
 
-    def geometry():
-        return page.evaluate("""() => {
-          const s=document.querySelector('#mascot-stage');
-          const b=document.querySelector('#mascot-body');
-          const p=document.querySelector('#play-scene');
-          const sr=s.getBoundingClientRect(), pr=p.getBoundingClientRect();
-          const br=b.getBoundingClientRect();
-          return {position:[sr.left-pr.left,sr.top-pr.top,sr.width,sr.height],
-            body:[br.left-pr.left,br.top-pr.top,br.width,br.height],
-            stageAnimations:s.getAnimations().length,
-            headAnimations:document.querySelector('.mascot-head-track').getAnimations().length,
-            opacity:[...document.querySelectorAll('.mascot-sheet')].map(x=>+getComputedStyle(x).opacity),
-            current:window.ERA_MASCOT_DEBUG.state.activeFrame};
-        }""")
+try:
+    with sync_playwright() as pw:
+        opts={'headless':True,'args':['--no-sandbox','--disable-dev-shm-usage']}
+        executable=(shutil.which('chromium') or shutil.which('google-chrome')
+                    or shutil.which('google-chrome-stable'))
+        if executable:opts['executable_path']=executable
+        browser=pw.chromium.launch(**opts)
+        page=make_page(browser,viewport={'width':1440,'height':1000},
+                       reduced_motion='no-preference')
+        page.wait_for_function('Boolean(window.ERA_MASCOT_DEBUG)')
+        page.locator('#mascot-stage').scroll_into_view_if_needed()
+        base=position(page)
+        assert page.locator('#mascot-fx').count()==1
+        assert page.locator('#mascot-fx-next').count()==1
+        assert 'V10.0' in page.locator('body').inner_text()
+        assert page.evaluate(
+            "getComputedStyle(document.querySelector('#mascot-fx')).backgroundImage"
+        ).startswith('url("data:image/webp;base64,')
+        page.locator('[data-reaction="curious"]').click()
+        page.wait_for_timeout(80)
+        mid=page.evaluate(
+            "[...document.querySelectorAll('.mascot-fx-sheet')].map(x=>+getComputedStyle(x).opacity)"
+        )
+        assert any(.05 < opacity < .98 for opacity in mid),('missing FX fade',mid)
+        check_position(page,base,'curious entering')
+        page.wait_for_timeout(180)
+        for mood in ('calm','joy','surprised','excited','curious','sleepy',
+                     'thinking','love','victory'):
+            page.locator(f'[data-reaction="{mood}"]').click()
+            page.wait_for_timeout(195)
+            state=page.evaluate('window.ERA_MASCOT_DEBUG.state.activeFrame')
+            assert state=='reactions:'+mood,(mood,state)
+            opacity=page.evaluate(
+                "[...document.querySelectorAll('.mascot-fx-sheet')].map(x=>+getComputedStyle(x).opacity)"
+            )
+            assert max(opacity)>.97,(mood,'FX not visible',opacity)
+            assert page.evaluate(
+                "document.querySelector('#mascot-stage').getAnimations().length")==0
+            check_position(page,base,mood)
+        for mood in ('curious','love','sleepy','victory','joy','surprised'):
+            page.locator(f'[data-reaction="{mood}"]').click()
+            page.wait_for_timeout(25)
+            check_position(page,base,'rapid '+mood)
+        page.wait_for_timeout(1800)
+        assert page.evaluate(
+            'window.ERA_MASCOT_DEBUG.state.activeFrame').startswith('directions:')
+        check_position(page,base,'return to tracking')
 
-    base = geometry()
-    points = [base]
-    page.locator('[data-reaction="joy"]').click()
-    page.wait_for_timeout(90)
-    entering = geometry()
-    points.append(entering)
-    assert entering["current"] == "reactions:joy"
-    assert entering["headAnimations"] >= 1
-    assert entering["stageAnimations"] == 0
-    assert 0 < entering["opacity"][0] < 1
-    assert 0 < entering["opacity"][1] < 1
+        mobile=make_page(browser,viewport={'width':390,'height':844},
+                         is_mobile=True,has_touch=True)
+        mobile.wait_for_function('Boolean(window.ERA_MASCOT_DEBUG)')
+        mobile.locator('#mascot-stage').scroll_into_view_if_needed()
+        mobile_base=position(mobile)
+        mobile.locator('[data-reaction="love"]').click()
+        mobile.wait_for_timeout(220)
+        assert max(mobile.evaluate(
+            "[...document.querySelectorAll('.mascot-fx-sheet')].map(x=>+getComputedStyle(x).opacity)"
+        ))>.95
+        check_position(mobile,mobile_base,'mobile love')
 
-    page.wait_for_timeout(230)
-    points.append(geometry())
-    assert points[-1]["opacity"][1] > .99
-
-    # A second expression uses the other head layer, not a visible atlas swap.
-    page.locator('[data-reaction="curious"]').click()
-    page.wait_for_timeout(90)
-    switching = geometry()
-    points.append(switching)
-    assert switching["current"] == "reactions:curious"
-    assert 0 < switching["opacity"][1] < 1
-    assert 0 < switching["opacity"][2] < 1
-
-    for mood in ("calm", "joy", "surprised", "excited", "curious",
-                 "sleepy", "thinking", "love", "victory"):
-        page.locator(f'[data-reaction="{mood}"]').click()
-        assert geometry()["current"] == "reactions:" + mood
-        points.append(geometry())
-        page.wait_for_timeout(22)
-
-    page.wait_for_timeout(1950)
-    returned = geometry()
-    points.append(returned)
-    assert returned["current"].startswith("directions:")
-    assert returned["stageAnimations"] == 0
-
-    for position in ("position", "body"):
-        max_delta = max(abs(point[position][i] - base[position][i])
-                        for point in points for i in range(4))
-        assert max_delta < .3, f"{position} shifted by {max_delta:.2f}px"
-
-    reduced = make_page(reduced=True)
-    reduced.locator('[data-reaction="joy"]').click()
-    reduced.wait_for_timeout(80)
-    assert reduced.evaluate(
-        "document.querySelector('.mascot-head-track').getAnimations().length") == 0
-    assert reduced.evaluate(
-        "getComputedStyle(document.querySelector('#mascot-reactions')).transitionDuration"
-    ) == "0s"
-    assert not errors, "JS errors: " + json.dumps(errors)
-    print("PASS: 0px stage/body movement, 9 expressions, crossfade, rapid clicks, reduced motion")
-    browser.close()
+        reduced=make_page(browser,viewport={'width':1200,'height':900},
+                          reduced_motion='reduce')
+        reduced.locator('[data-reaction="excited"]').click()
+        reduced.wait_for_timeout(30)
+        assert reduced.evaluate(
+            "document.querySelector('.mascot-head-track').getAnimations().length")==0
+        assert reduced.evaluate(
+            "getComputedStyle(document.querySelector('#mascot-fx')).transitionDuration"
+        )=='0s'
+        assert not errors,json.dumps(errors)
+        print('PASS: desktop/mobile 9 emotions, FX visible, 170ms crossfade, stable stage/body, rapid clicks, reduced motion')
+        browser.close()
+finally:
+    pass

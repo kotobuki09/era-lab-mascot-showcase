@@ -16,6 +16,7 @@
   const stage=$('#mascot-stage'), scene=$('#play-scene'), speech=$('#scene-speech'), status=$('#direction-status');
   const directionSheet=$('#mascot-directions');
   const reactionLayers=[$('#mascot-reactions'),$('#mascot-reactions-next')];
+  const fxLayers=[$('#mascot-fx'),$('#mascot-fx-next')];
   const headTrack=$('.mascot-head-track');
   let activeReactionLayer=-1, headAnimation=null;
   const randomButton=$('#random-button'), autoToggle=$('#auto-toggle'), motionToggle=$('#motion-toggle');
@@ -35,6 +36,7 @@
       // The torso and stage never move. Fade out whichever expression layers
       // are visible; the directional head stays mounted beneath them.
       reactionLayers.forEach(layer=>layer.classList.remove('is-visible'));
+      fxLayers.forEach(layer=>layer.classList.remove('is-visible'));
       // Keep the last buffer index so a quick new reaction uses the other
       // (already hidden) sprite layer instead of mutating a fading frame.
     }else{
@@ -44,15 +46,21 @@
         // clicked different expressions in quick succession.
         const next=activeReactionLayer===0?1:0;
         const layer=reactionLayers[next];
+        const fx=fxLayers[next];
         layer.style.backgroundPosition=cellPosition(index);
+        fx.style.backgroundPosition=cellPosition(index);
         layer.style.zIndex='2';
+        fx.style.zIndex='4';
         if(activeReactionLayer!==-1){
           const previous=reactionLayers[activeReactionLayer];
           previous.style.zIndex='1';
           previous.classList.remove('is-visible');
+          fxLayers[activeReactionLayer].style.zIndex='3';
+          fxLayers[activeReactionLayer].classList.remove('is-visible');
         }
         directionSheet.classList.add('is-muted');
         layer.classList.add('is-visible');
+        fx.classList.add('is-visible');
         activeReactionLayer=next;
       }
     }

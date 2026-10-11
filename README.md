@@ -41,3 +41,10 @@ head, retains the original fixed hoodie/body, and double-buffers two reaction
 sprites so rapid emotion changes crossfade smoothly (170 ms). Reduced-motion
 preferences and the original assets are unchanged. Regression tests explicitly
 guard against accidentally animating the outer stage again.
+
+## V9 browser regression in CI
+
+GitHub Actions now tests the deployed static build in headless Chromium before
+publishing it. The test verifies stable stage/body geometry (less than 0.3 px
+measured deviation), a 170 ms emotion crossfade, all nine rapid expression
+selections, restoration of cursor tracking, and reduced-motion behavior.

@@ -14,7 +14,10 @@
   // sheets follow the pointer. The hoodie is one immutable third layer.
   const state = {wantedDirection:'center', reaction:null, auto:false, motion:true, lastPointer:Date.now(), mode:'all', query:'', activeFrame:'directions:center', x:0, y:0, initPointer:false};
   const stage=$('#mascot-stage'), scene=$('#play-scene'), speech=$('#scene-speech'), status=$('#direction-status');
-  const directionSheet=$('#mascot-directions'), reactionSheet=$('#mascot-reactions');
+  const directionSheet=$('#mascot-directions');
+  const reactionLayers=[$('#mascot-reactions'),$('#mascot-reactions-next')];
+  const headTrack=$('.mascot-head-track');
+  let activeReactionLayer=-1, headAnimation=null;
   const randomButton=$('#random-button'), autoToggle=$('#auto-toggle'), motionToggle=$('#motion-toggle');
   const reduceMotion=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if(reduceMotion){state.motion=false;motionToggle.classList.remove('is-on');motionToggle.setAttribute('aria-checked','false');document.body.classList.add('motion-off');}
@@ -28,24 +31,47 @@
     if(index<0)return;
     if(kind==='directions'){
       directionSheet.style.backgroundPosition=cellPosition(index);
-      reactionSheet.classList.remove('is-visible');
+      directionSheet.classList.remove('is-muted');
+      // The torso and stage never move. Fade out whichever expression layers
+      // are visible; the directional head stays mounted beneath them.
+      reactionLayers.forEach(layer=>layer.classList.remove('is-visible'));
+      // Keep the last buffer index so a quick new reaction uses the other
+      // (already hidden) sprite layer instead of mutating a fading frame.
     }else{
-      reactionSheet.style.backgroundPosition=cellPosition(index);
-      reactionSheet.classList.add('is-visible');
+      if(state.activeFrame!==key){
+        // Double-buffer the reaction atlas. Updating backgroundPosition on the
+        // currently visible layer was causing a second hard snap when users
+        // clicked different expressions in quick succession.
+        const next=activeReactionLayer===0?1:0;
+        const layer=reactionLayers[next];
+        layer.style.backgroundPosition=cellPosition(index);
+        layer.style.zIndex='2';
+        if(activeReactionLayer!==-1){
+          const previous=reactionLayers[activeReactionLayer];
+          previous.style.zIndex='1';
+          previous.classList.remove('is-visible');
+        }
+        directionSheet.classList.add('is-muted');
+        layer.classList.add('is-visible');
+        activeReactionLayer=next;
+      }
     }
     state.activeFrame=key;
   }
-  // Faithful to page-mascot: each cell is a background-position step,
-  // neither image is ever replaced. The body image never changes.
+  // The page-mascot reference keeps its parent button stationary and animates
+  // an inner span. The old stage.animate(scale) replaced the CSS translate()
+  // used to center the entire ERA character, moving it by half its width.
   const SQUASH=[
-    {transform:'scale(1,1)',easing:'ease-in'},
-    {transform:'scale(1.10,.86)',offset:.18,easing:'ease-out'},
-    {transform:'scale(.95,1.08)',offset:.45,easing:'ease-in-out'},
-    {transform:'scale(1.03,.97)',offset:.72,easing:'ease-in-out'},
+    {transform:'scale(1,1)',easing:'ease-out'},
+    {transform:'scale(1.025,.975)',offset:.22,easing:'ease-out'},
+    {transform:'scale(.99,1.015)',offset:.57,easing:'ease-in-out'},
     {transform:'scale(1,1)'}
   ];
   function boop(){
-    if(state.motion && typeof stage.animate==='function')stage.animate(SQUASH,{duration:420,easing:'linear'});
+    if(!state.motion || typeof headTrack.animate!=='function')return;
+    if(headAnimation)headAnimation.cancel();
+    // ONLY animate the head layer: never animate #mascot-stage or #mascot-body.
+    headAnimation=headTrack.animate(SQUASH,{duration:320,easing:'linear'});
   }
   function say(txt,duration=1400){
     clearTimeout(bubbleTimer);speech.textContent=txt;
@@ -151,7 +177,8 @@
   motionToggle.addEventListener('click',()=>{
     state.motion=!state.motion;document.body.classList.toggle('motion-off',!state.motion);
     motionToggle.classList.toggle('is-on',state.motion);motionToggle.setAttribute('aria-checked',String(state.motion));
-    // Motion setting only affects the optional click squash, never tracking.
+    if(!state.motion && headAnimation){headAnimation.cancel();headAnimation=null;}
+    // Motion setting also disables sprite fades without moving the stage.
   });
   // No periodic full-face swap to simulate a blink: no blink asset exists.
 

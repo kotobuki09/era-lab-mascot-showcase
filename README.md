@@ -32,3 +32,12 @@ V7 addresses the user-visible head snap root cause. The previous rig had dynamic
 ## V8: image artifact repair
 
 Removes the black spurious line behind the collar on the down-right head sprite and the pale ghost band left in the fixed body by the earlier segmentation. Keeps the entire approved 18-PNG source set unchanged. The builder restricts below-cheek outlines to an 8-pixel warm-skin envelope, cuts only the true neck skin from the single hoodie layer, and validates four recorded neck-edge regression regions in every GitHub Pages build. The artwork still has nine discrete directions; this change repairs visual artifacts, not interpolated head rotation.
+
+## V9 — smooth reaction transition, stationary mascot
+
+The expression jump occurred because animating the outer #mascot-stage with scale()
+overrode its CSS translate(-50%, -50%) centering. V9 animates only the inner
+head, retains the original fixed hoodie/body, and double-buffers two reaction
+sprites so rapid emotion changes crossfade smoothly (170 ms). Reduced-motion
+preferences and the original assets are unchanged. Regression tests explicitly
+guard against accidentally animating the outer stage again.

@@ -16,28 +16,36 @@ function extractFunction(name){
   }
   return src.slice(begin,end+1);
 }
-test('gaze hysteresis prevents flicker around angle-sector thresholds',()=>{
-  const calc=vm.runInNewContext('('+extractFunction('axisWithHysteresis')+')');
-  assert.equal(calc(.29,0),0);
-  assert.equal(calc(.37,0),1);
-  assert.equal(calc(.29,1),1);
-  assert.equal(calc(.19,1),0);
-  assert.equal(calc(-.37,0),-1);
-  assert.equal(calc(-.29,-1),-1);
-  assert.equal(calc(-.18,-1),0);
+test('angular cursor sectors follow eight directions with center deadzone',()=>{
+  const calc=vm.runInNewContext('('+extractFunction('chooseSector')+')');
+  assert.equal(calc(0,0,-1,60),-1);
+  assert.equal(calc(55,0,-1,60),-1);
+  assert.equal(calc(120,0,-1,60),0);
+  assert.equal(calc(120,120,-1,60),1);
+  assert.equal(calc(0,120,-1,60),2);
+  assert.equal(calc(-120,120,-1,60),3);
+  assert.equal(calc(-120,0,-1,60),4);
+  assert.equal(calc(-120,-120,-1,60),5);
+  assert.equal(calc(0,-120,-1,60),6);
+  assert.equal(calc(120,-120,-1,60),7);
 });
-test('interruptible latest-frame compositor avoids stale image swaps',()=>{
-  assert.match(src,/const run=\+\+activeFade/);
-  assert.match(src,/if\(run!==activeFade\|\|key!==requested\)return/);
-  assert.match(src,/if\(next\.classList\.contains\('is-visible'\)\)/);
-  assert.match(src,/const TRANSITION_MS=112/);
-  assert.doesNotMatch(src,/fadeBusy/);
+test('hysteresis holds edges and avoids center flicker',()=>{
+  const calc=vm.runInNewContext('('+extractFunction('chooseSector')+')');
+  assert.equal(calc(55,0,0,60),0);
+  assert.equal(calc(47,0,0,60),-1);
+  assert.equal(calc(Math.cos(.45)*120,Math.sin(.45)*120,0,60),0);
+  assert.equal(calc(Math.cos(.7)*120,Math.sin(.7)*120,0,60),1);
 });
-test('continuous pointer gaze uses time independent ease and has hysteresis',()=>{
-  assert.match(src,/1-Math\.exp\(-dt\/105\)/);
-  assert.match(src,/document\.hidden/);
-  assert.match(src,/performance\.now\(\)<gaze\.holdUntil/);
-  assert.match(src,/const enter=\.34,exit=\.23/);
+test('persistent decoded images avoid src swaps and ghosted crossfades',()=>{
+  assert.match(src,/node\.decode\(\)/);
+  assert.match(src,/spriteHost\.append\(node\)/);
+  assert.match(src,/frameNodes = new Map\(\), decoded = new Set\(\)/);
+  assert.doesNotMatch(extractFunction('commitFrame'),/\.src\s*=|offsetWidth|setTimeout/);
+  assert.doesNotMatch(src,/TRANSITION_MS|activeFade|fadeTimer|next\.src/);
+  const css=readFileSync(join(root,'src/styles.css'),'utf8');
+  assert.match(css,/\.sprite-frame\.is-active\{opacity:1;visibility:visible\}/);
+  assert.match(src,/spriteLook\.style\.transform/);
+  assert.doesNotMatch(src,/scheduleBlink\(\)/);
 });
 test('direction graphics have a separate gaze wrapper from breathing and reaction',()=>{
   const html=readFileSync(join(root,'index.html'),'utf8');

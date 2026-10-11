@@ -3,20 +3,15 @@
 @media(max-width:1180px){.mood-showcase{grid-template-columns:repeat(5,1fr)}.asset-gallery{grid-template-columns:repeat(4,1fr)}.direction-buttons{grid-template-columns:repeat(3,1fr)}.direction-buttons button{height:35px;width:35px}}@media(max-width:960px){.shell{width:min(100% - 42px,690px)}.hero{grid-template-columns:1fr;gap:18px;padding:45px 0 72px}.hero h1{font-size:clamp(47px,9vw,72px)}.hero-right{height:430px}.hero-character{width:440px}.play-grid{grid-template-columns:1fr}.controls{min-height:auto}.random-button{margin-top:16px}.direction-strip{align-items:center}.section{padding:75px 0}.nav-links{display:none}.brand-sub{display:none}.last-call{padding:44px;min-height:260px}.last-call img{height:260px}}@media(max-width:660px){.shell{width:calc(100% - 32px)}.header{padding:18px 0}.brand{font-size:17px}.brand-icon{height:31px;width:31px}.nav-cta{font-size:0;padding:10px 13px}.nav-cta svg{height:21px;width:21px}.nav-cta span{font-size:15px}.hero{padding-top:38px}.hero h1{font-size:clamp(44px,11.3vw,59px);line-height:1.16}.hero-description{font-size:14px}.hero-actions{gap:9px;margin-bottom:36px;flex-wrap:wrap}.hero-actions .button{font-size:11px;padding:13px}.hero-stats{gap:13px}.hero-stats div{min-width:0;padding-right:12px}.hero-stats b{font-size:24px}.hero-stats span{font-size:8px}.hero-right{height:370px;border-radius:21px}.hero-character{width:360px}.hero-speech{font-size:10px;left:5%;top:9%}.section-intro{align-items:start;flex-direction:column;margin-bottom:27px;gap:16px}.section-intro h2{font-size:34px}.section-intro p{font-size:13px}.play-scene{min-height:410px}.scene-circle-1{width:310px;height:310px}.scene-circle-2{width:240px;height:240px}.mascot-stage{width:min(77%,305px)}.scene-top,.scene-bottom{left:13px;right:13px}.scene-coords{font-size:8px}.tag{font-size:7px;padding:8px}.scene-bottom{font-size:7px}.scene-speech{font-size:10px;padding:9px;top:76%}.controls{padding:19px}.direction-strip{flex-direction:column;align-items:stretch}.direction-buttons{grid-template-columns:repeat(9,1fr);gap:3px}.direction-buttons button{width:100%;height:35px;font-size:17px}.mood-showcase{grid-template-columns:repeat(3,1fr);gap:8px}.mood-card{padding:9px 6px}.asset-toolbar{flex-direction:column;align-items:stretch}.filters{gap:6px}.filters button{flex:1;padding:11px 6px;font-size:10px}.search-box{width:100%}.asset-gallery{grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}.asset-card-foot{padding:8px 6px}.asset-card-foot span{font-size:9px}.asset-card-foot a{font-size:13px;padding:3px 6px}.masters{padding:23px;flex-direction:column;align-items:stretch}.master-links{min-width:0}.last-call{padding:32px 25px;min-height:300px}.last-call img{position:absolute;right:-55px;bottom:0;height:220px;opacity:.55}.last-call>div{z-index:2;position:relative}.last-call h2{max-width:290px;font-size:31px}.last-call p{max-width:245px}.footer{flex-wrap:wrap;gap:14px}.modal-actions .button{font-size:11px;padding:10px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;scroll-behavior:auto!important}}
 
-/* v3: a physical gaze layer wraps breathing/poke animation; direction changes never restart idle breathing */
-.mascot-stage{--gaze-x:0px;--gaze-y:0px;--gaze-roll:0deg;touch-action:manipulation;contain:layout style;}
-.sprite-look{position:absolute;inset:0;transform:translate3d(var(--gaze-x),var(--gaze-y),0) rotate(var(--gaze-roll));transform-origin:50% 72%;will-change:transform;}
-.sprite-next{transition:opacity 155ms cubic-bezier(.22,.75,.25,1);}
-.sprite-next:not(.is-visible){opacity:0;}
-.mascot-stage img{backface-visibility:hidden;image-rendering:auto;}
+/* v5: all original PNGs stay decoded and mounted; select one visible layer. */
+.mascot-stage{touch-action:manipulation;contain:layout style;isolation:isolate}
+.sprite-look{position:absolute;inset:0;transform-origin:50% 72%;will-change:transform}
+.sprite-breathe{filter:drop-shadow(0 24px 16px #194b9a20)}
+.mascot-stage .sprite-base,.mascot-stage .sprite-frame{filter:none;backface-visibility:hidden}
+.sprite-frame{opacity:0;visibility:hidden;transition:none!important;pointer-events:none}
+.sprite-frame.is-active{opacity:1;visibility:visible}
+.sprite-base.is-hidden{opacity:0;visibility:hidden}
 .mascot-stage:focus-visible{outline:3px solid #2b7cec;outline-offset:6px;border-radius:24px}
 body.motion-off .sprite-look{transform:none!important;will-change:auto}
 @media(prefers-reduced-motion:reduce){.sprite-look{transform:none!important;will-change:auto}}
-
-/* V4 compositor and mobile smoothing */
-.sprite-next{transition:opacity 112ms linear;will-change:opacity}
-.sprite-look{transform:translate3d(var(--gaze-x),var(--gaze-y),0) rotate(var(--gaze-roll));}
-.mascot-stage{isolation:isolate}
-.mascot-stage .sprite-base,.mascot-stage .sprite-next{transform:translateZ(0);backface-visibility:hidden}
 @media(hover:none){.mascot-stage{touch-action:manipulation}.reaction-controls button{min-height:72px}}
-@media(prefers-reduced-motion:reduce){.sprite-next{transition-duration:0ms!important}}

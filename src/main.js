@@ -13,66 +13,68 @@
   // A small two-layer compositor: preload each frame once and only paint decoded images.
   // Direction changes are throttled by hysteresis below, not by a fade queue.
   const state = {wantedDirection:'center', reaction:null, auto:false, motion:true, lastPointer:Date.now(), mode:'all', query:'', activeFrame:'directions:center', x:0, y:0, initPointer:false};
-  const base = $('#sprite-base'), next = $('#sprite-next'), stage = $('#mascot-stage'), scene = $('#play-scene'), speech = $('#scene-speech'), status = $('#direction-status');
+  const base = $('#sprite-base'), spriteHost = $('.sprite-breathe'), spriteLook = $('.sprite-look'), stage = $('#mascot-stage'), scene = $('#play-scene'), speech = $('#scene-speech'), status = $('#direction-status');
   const randomButton = $('#random-button'), autoToggle = $('#auto-toggle'), motionToggle = $('#motion-toggle');
   const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (reduceMotion) {state.motion=false;motionToggle.classList.remove('is-on');motionToggle.setAttribute('aria-checked','false');document.body.classList.add('motion-off');}
   const speechMap = {calm:'Ah, a peaceful moment ☁', joy:'This made my day! ✦', surprised:'Oh! You caught me!', excited:'That is SO cool! ✨', curious:'Hmm… interesting. 🤔', sleepy:'Five more minutes… 💤', thinking:'Let me think about that.', love:'Sending some love! 💕', victory:'Yes! We did it! 🚀'};
   const animMap = {surprised:'shake', curious:'poke', sleepy:'poke', joy:'pop', excited:'pop', love:'pop', victory:'pop', thinking:'poke', calm:'poke'};
-  const TRANSITION_MS=112;
-  const preloaded=new Map();
-  const assetPath=key=>{const [kind,id]=key.split(':');const found=(kind==='directions'?D:R).get(id);if(!found)throw new Error('Unknown frame '+key);return assetURL(found.path)};
-  let displayed='directions:center', requested=displayed, activeFade=0, fadeTimer=0;
-  let reactionTimer=0, bubbleTimer=0, autoTimer=0, blinkTimer=0, ambientTimer=0,actionTimer=0;
-  function preloadImage(key){
-    if(preloaded.has(key))return preloaded.get(key);
-    const img=new Image();img.decoding='async';img.src=assetPath(key);
-    const promise=(img.decode?img.decode():new Promise((yes,no)=>{img.onload=yes;img.onerror=no})).then(()=>img,()=>img);
+  // Decode each PNG once, keep its image node mounted, and only toggle the
+  // active layer. No img.src swapping, forced reflow, or crossfade ghosting.
+  const preloaded = new Map(), frameNodes = new Map(), decoded = new Set();
+  const assetPath = key => {
+    const [kind,id] = key.split(':');
+    const item = (kind === 'directions' ? D : R).get(id);
+    if (!item) throw new Error('Unknown frame ' + key);
+    return assetURL(item.path);
+  };
+  let displayed = 'directions:center', requested = displayed, activeNode = null;
+  let reactionTimer = 0, bubbleTimer = 0, autoTimer = 0, actionTimer = 0;
+  function commitFrame(key) {
+    if (requested !== key || !decoded.has(key)) return;
+    const node = frameNodes.get(key);
+    if (!node || node === activeNode) return;
+    if (activeNode) activeNode.classList.remove('is-active');
+    node.classList.add('is-active');
+    activeNode = node;
+    base.classList.add('is-hidden');
+    base.setAttribute('aria-hidden','true');
+    displayed = key;
+    state.activeFrame = key;
+  }
+  function preloadImage(key) {
+    if (preloaded.has(key)) return preloaded.get(key);
+    const node = new Image();
+    node.className = 'sprite sprite-frame';
+    node.alt = '';
+    node.decoding = 'async';
+    node.loading = 'eager';
+    node.setAttribute('aria-hidden','true');
+    node.src = assetPath(key);
+    frameNodes.set(key,node);
+    spriteHost.append(node);
+    const ready = typeof node.decode === 'function'
+      ? node.decode()
+      : new Promise((resolve,reject) => {
+          if (node.complete && node.naturalWidth) resolve();
+          else { node.onload = resolve; node.onerror = reject; }
+        });
+    const promise = ready.then(() => {
+      decoded.add(key);
+      if (requested === key) commitFrame(key);
+      return node;
+    }).catch(() => {
+      console.warn('ERA mascot frame could not be decoded: ' + key);
+      return null;
+    });
     preloaded.set(key,promise);
     return promise;
   }
-  function commitFrame(key){
-    clearTimeout(fadeTimer);
-    activeFade++;
-    base.src=assetPath(key);
-    base.alt='ERA Lab mascot '+key.replace(':',' ');
-    next.classList.remove('is-visible');
-    next.style.transition='none';
-    next.style.opacity='0';
-    displayed=key;state.activeFrame=key;
-  }
-  async function setFrame(key,{immediate=false}={}){
-    if(key===requested&&!immediate)return;
-    requested=key;
-    const run=++activeFade;
-    if(immediate||!state.motion){commitFrame(key);return;}
-    const ready=await preloadImage(key);
-    if(run!==activeFade||key!==requested)return; // do not flash stale frames
-    clearTimeout(fadeTimer);
-    // If a previous transition is still running, promote its target to the
-    // stable layer before beginning the next one (never queue stale looks).
-    if(next.classList.contains('is-visible')){
-      const oldSrc=next.src;
-      base.src=oldSrc;
-      next.classList.remove('is-visible');
-    }
-    if(base.src===ready.src){displayed=key;state.activeFrame=key;return;}
-    next.style.transition='none';next.style.opacity='0';next.src=ready.src;
-    // force compositor to observe the 0-opacity start state
-    void next.offsetWidth;
-    next.style.opacity='';
-    next.style.transition='';
-    requestAnimationFrame(()=>{
-      if(run!==activeFade)return;
-      next.classList.add('is-visible');
-      fadeTimer=setTimeout(()=>{
-        if(run!==activeFade)return;
-        base.src=ready.src;base.alt='ERA Lab mascot '+key.replace(':',' ');
-        next.classList.remove('is-visible');
-        next.style.transition='none';next.style.opacity='0';
-        displayed=key;state.activeFrame=key;
-      },TRANSITION_MS+18);
-    });
+  function setFrame(key) {
+    if (!frameNodes.has(key)) return;
+    requested = key;
+    if (decoded.has(key)) commitFrame(key);
+    // Pending decode commits only the most recently requested frame.
   }
   function say(txt,duration=1400){
     clearTimeout(bubbleTimer);speech.textContent=txt;
@@ -88,7 +90,23 @@
   function setDirection(dir,{manual=false}={}){
     if(!D.has(dir))return;
     state.wantedDirection=dir;markDirection(dir);
-    if(manual){clearAuto();state.lastPointer=Date.now();gaze.holdUntil=performance.now()+1300;const i=[...D.keys()].indexOf(dir);gaze.targetX=(i%3-1)*.55;gaze.targetY=(Math.floor(i/3)-1)*.5;startGaze();say('Looking '+dir.replaceAll('-',' ')+' ✳',750);}
+    if (manual) {
+      clearAuto();
+      state.lastPointer = Date.now();
+      gaze.holdUntil = performance.now() + 1100;
+      gaze.pointerDirty = false;
+      gaze.sector = sectorOrder.indexOf(dir);
+      const i = sectors.indexOf(dir);
+      gaze.targetX = (i % 3 - 1) * .55;
+      gaze.targetY = (Math.floor(i / 3) - 1) * .52;
+      startGaze();
+      say('Looking ' + dir.replaceAll('-',' ') + ' ✳',750);
+    } else if (state.auto) {
+      const i = sectors.indexOf(dir);
+      gaze.targetX = (i % 3 - 1) * .55;
+      gaze.targetY = (Math.floor(i / 3) - 1) * .52;
+      startGaze();
+    }
     if(!state.reaction)setFrame('directions:'+dir);
   }
   function showReaction(id,{fromAuto=false,blink=false}={}){
@@ -134,52 +152,75 @@
     say('Demo mode is on — enjoy! ✨',1300);
   }
 
-  // 60 Hz spring-damped tracking, with separate hysteresis for discreet direction
-  // frames. This permits graceful motion without thrashing at grid boundaries.
-  const gaze={targetX:0,targetY:0,x:0,y:0,axisX:0,axisY:0,pending:'center',pendingSince:0,holdUntil:0,lastTime:0};
-  let gazeRAF=0;
-  const clamp=(n,low,high)=>Math.min(high,Math.max(low,n));
-  function axisWithHysteresis(value,old){
-    const enter=.34,exit=.23;
-    if(old===0)return value>enter?1:value< -enter?-1:0;
-    if(old>0)return value< -enter?-1:value<exit?0:1;
-    return value>enter?1:value> -exit?0:-1;
+  // Koboyo-style angle sectors and dead zone, independent of motion easing.
+  const sectorOrder = ['right','down-right','down','down-left','left','up-left','up','up-right'];
+  const sectors = ['up-left','up','up-right','left','center','right','down-left','down','down-right'];
+  const gaze = {targetX:0,targetY:0,x:0,y:0,sector:-1,clientX:0,clientY:0,hasPointer:false,pointerDirty:false,holdUntil:0,lastTime:0};
+  let gazeRAF = 0;
+  const clamp = (n,lo,hi) => Math.min(hi,Math.max(lo,n));
+  function chooseSector(dx,dy,previous,deadzone) {
+    const radius = Math.hypot(dx,dy);
+    if (radius < (previous === -1 ? deadzone + 12 : Math.max(0,deadzone - 12))) return -1;
+    const angle = Math.atan2(dy,dx), arc = Math.PI / 4;
+    if (previous !== -1 &&
+      Math.abs(Math.atan2(Math.sin(angle - previous*arc),Math.cos(angle - previous*arc))) < arc/2 + .13) return previous;
+    return ((Math.round(angle/arc) % 8) + 8) % 8;
   }
-  const sectors=['up-left','up','up-right','left','center','right','down-left','down','down-right'];
-  function gazeTick(ts){
-    gazeRAF=0;
-    if(!state.motion||document.hidden)return;
-    const dt=clamp(ts-(gaze.lastTime||ts),0,48);gaze.lastTime=ts;
-    const alpha=1-Math.exp(-dt/105);
-    gaze.x+=(gaze.targetX-gaze.x)*alpha;gaze.y+=(gaze.targetY-gaze.y)*alpha;
-    stage.style.setProperty('--gaze-x',(gaze.x*3.2).toFixed(2)+'px');
-    stage.style.setProperty('--gaze-y',(gaze.y*2.4).toFixed(2)+'px');
-    stage.style.setProperty('--gaze-roll',(gaze.x*1.35).toFixed(2)+'deg');
-    gaze.axisX=axisWithHysteresis(gaze.x,gaze.axisX);
-    gaze.axisY=axisWithHysteresis(gaze.y,gaze.axisY);
-    const choice=sectors[(gaze.axisY+1)*3+(gaze.axisX+1)];
-    if(choice!==gaze.pending){gaze.pending=choice;gaze.pendingSince=ts;}
-    if(!state.auto&&ts-gaze.pendingSince>78&&choice!==state.wantedDirection)setDirection(choice);
-    if(Math.abs(gaze.x-gaze.targetX)>.004||Math.abs(gaze.y-gaze.targetY)>.004||(choice!==state.wantedDirection&&ts-gaze.pendingSince<=95))startGaze();
+  function applyPointer() {
+    gaze.pointerDirty = false;
+    if (!gaze.hasPointer || state.auto) return;
+    const rect = stage.getBoundingClientRect();
+    const dx = gaze.clientX - (rect.left + rect.width / 2);
+    const dy = gaze.clientY - (rect.top + rect.height / 2);
+    const sector = chooseSector(dx,dy,gaze.sector,Math.max(48,Math.min(rect.width,rect.height)*.18));
+    if (sector !== gaze.sector) {
+      gaze.sector = sector;
+      setDirection(sector === -1 ? 'center' : sectorOrder[sector]);
+    }
+    gaze.targetX = clamp(dx / (rect.width*.62),-1,1);
+    gaze.targetY = clamp(dy / (rect.height*.62),-1,1);
   }
-  function startGaze(){if(!gazeRAF&&state.motion&&!document.hidden)gazeRAF=requestAnimationFrame(gazeTick);}
-  function updateTarget(clientX,clientY){
-    const r=stage.getBoundingClientRect();
-    gaze.targetX=clamp((clientX-r.left-r.width*.5)/(r.width*1.0),-1,1);
-    gaze.targetY=clamp((clientY-r.top-r.height*.48)/(r.height*1.05),-1,1);
+  function gazeTick(ts) {
+    gazeRAF = 0;
+    if (!state.motion || document.hidden) return;
+    if (gaze.pointerDirty && ts >= gaze.holdUntil) applyPointer();
+    const dt = clamp(ts - (gaze.lastTime || ts),0,48);
+    gaze.lastTime = ts;
+    const alpha = 1 - Math.exp(-dt / 88);
+    gaze.x += (gaze.targetX - gaze.x) * alpha;
+    gaze.y += (gaze.targetY - gaze.y) * alpha;
+    spriteLook.style.transform = 'translate3d(' + (gaze.x*4).toFixed(2) + 'px,' + (gaze.y*3).toFixed(2) + 'px,0) rotate(' + (gaze.x*1.15).toFixed(2) + 'deg)';
+    if (gaze.pointerDirty || Math.abs(gaze.x-gaze.targetX)>.003 || Math.abs(gaze.y-gaze.targetY)>.003) startGaze();
+  }
+  function startGaze() {
+    if (!gazeRAF && state.motion && !document.hidden) gazeRAF = requestAnimationFrame(gazeTick);
+  }
+  function updateTarget(clientX,clientY) {
+    gaze.clientX = clientX;
+    gaze.clientY = clientY;
+    gaze.hasPointer = true;
+    gaze.pointerDirty = true;
     startGaze();
   }
-  window.addEventListener('pointermove',e=>{
-    if(e.pointerType==='touch'||state.auto||document.body.classList.contains('modal-open')||performance.now()<gaze.holdUntil)return;
-    state.x=e.clientX;state.y=e.clientY;state.lastPointer=Date.now();state.initPointer=true;
+  window.addEventListener('pointermove',e => {
+    if (e.pointerType === 'touch' || state.auto || document.body.classList.contains('modal-open') || performance.now() < gaze.holdUntil) return;
+    state.x = e.clientX; state.y = e.clientY;
+    state.lastPointer = Date.now(); state.initPointer = true;
     updateTarget(e.clientX,e.clientY);
   },{passive:true});
-  window.addEventListener('pointerleave',()=>{if(!state.auto){gaze.targetX=0;gaze.targetY=0;startGaze();}});
-  // Hands off the mouse for a while? Let the mascot gently return to center.
-  ambientTimer=setInterval(()=>{
-    if(document.hidden||state.auto||state.reaction||!state.initPointer||Date.now()-state.lastPointer<2600)return;
-    gaze.targetX=0;gaze.targetY=0;startGaze();
-  },850);
+  const reaim = () => {
+    if (!gaze.hasPointer || state.auto) return;
+    gaze.pointerDirty = true;
+    startGaze();
+  };
+  window.addEventListener('scroll',reaim,{passive:true});
+  window.addEventListener('resize',reaim,{passive:true});
+  window.addEventListener('pointerleave',() => {
+    if (state.auto || performance.now() < gaze.holdUntil) return;
+    gaze.hasPointer = false; gaze.pointerDirty = false; gaze.sector = -1;
+    gaze.targetX = 0; gaze.targetY = 0;
+    setDirection('center'); startGaze();
+  });
   stage.addEventListener('click',randomReaction);
   stage.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();randomReaction();}});
   scene.addEventListener('keydown',e=>{if(e.target===scene&&(e.key==='Enter'||e.key===' ')){e.preventDefault();randomReaction();}});
@@ -190,18 +231,11 @@
   motionToggle.addEventListener('click',()=>{
     state.motion=!state.motion;document.body.classList.toggle('motion-off',!state.motion);
     motionToggle.classList.toggle('is-on',state.motion);motionToggle.setAttribute('aria-checked',String(state.motion));
-    if(!state.motion){cancelAnimationFrame(gazeRAF);gazeRAF=0;setFrame(requested,{immediate:true});}
+    if(!state.motion){cancelAnimationFrame(gazeRAF);gazeRAF=0;setFrame(requested);}
     else startGaze();
   });
   document.addEventListener('visibilitychange',()=>{if(document.hidden){cancelAnimationFrame(gazeRAF);gazeRAF=0;}else{gaze.lastTime=0;startGaze();}});
-  function scheduleBlink(){
-    clearTimeout(blinkTimer);
-    blinkTimer=setTimeout(()=>{
-      if(!document.hidden&&!state.reaction&&!state.auto&&state.motion&&Date.now()-state.lastPointer>500)showReaction('calm',{blink:true});
-      scheduleBlink();
-    },5900+Math.random()*3400);
-  }
-  scheduleBlink();
+  // No periodic full-face swap to simulate a blink: no blink asset exists.
 
   // Asset library controls
   const all=[...manifest.directions.map(x=>({...x,category:'directions'})),...manifest.reactions.map(x=>({...x,category:'reactions'}))];
@@ -253,5 +287,5 @@
   // Decode the sprites before they are displayed to prevent the first swap stuttering.
   for(const item of manifest.directions)preloadImage('directions:'+item.id);
   for(const item of manifest.reactions)preloadImage('reactions:'+item.id);
-  window.ERA_MASCOT_DEBUG={setDirection,showReaction,setAuto,state,manifest,gaze,setFrame,preloaded};
+  window.ERA_MASCOT_DEBUG={setDirection,showReaction,setAuto,state,manifest,gaze,setFrame,preloaded,frameNodes,decoded,chooseSector};
 })();

@@ -1,96 +1,140 @@
 #!/usr/bin/env python3
-"""Create aligned head-only page-mascot atlases from ERA Lab's approved PNGs.
+"""Build aligned face/head sheets from ERA Lab's original 18 PNG drawings.
 
-The body is a single immutable layer. Direction and reaction sheets contain
-ONLY the face/head; all input source drawings remain unchanged. This matters:
-packing the original full-body PNGs into a sprite sheet still makes the coat
-and shoulders jump between direction cells.
-
-Usage: python scripts/build_rig.py --source assets --dest dist/assets/rig
+Following nilbuild/page-mascot design rules: ONE fixed torso and a common
+neck anchor. V6 improperly copied colored hoodie pixels into moving sprites.
+No generative images and no changes to the user's approved original PNGs.
 """
 import argparse
+import json
 from pathlib import Path
-
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
+from scipy import ndimage as ndi
 
-DIRECTIONS = (
-    "up-left", "up", "up-right",
-    "left", "center", "right",
-    "down-left", "down", "down-right",
-)
-REACTIONS = (
-    "calm", "joy", "surprised",
-    "excited", "curious", "sleepy",
-    "thinking", "love", "victory",
-)
-CELL = 512
+DIRECTIONS = ("up-left", "up", "up-right", "left", "center", "right",
+              "down-left", "down", "down-right")
+REACTIONS = ("calm", "joy", "surprised", "excited", "curious", "sleepy",
+             "thinking", "love", "victory")
+CELL=512
+ANCHOR=(255,400)
 
+def morph(mask, radius):
+    k=max(3,int(radius)|1)
+    img=Image.fromarray((mask*255).astype("uint8"),"L")
+    return np.asarray(img.filter(ImageFilter.MaxFilter(k))
+                       .filter(ImageFilter.MinFilter(k)))>120
 
-def split_head(image):
-    """Cut illustrated head/neck with a soft collar boundary, without redraws."""
-    pix = np.asarray(image.convert("RGBA"))
-    assert pix.shape == (CELL, CELL, 4), "A source frame must be 512 x 512 RGBA"
-    r, g, b = (pix[:, :, channel].astype(np.float32) for channel in range(3))
-    y, x = np.indices((CELL, CELL))
-    skin = (r > 95) & (r > g + 10) & (g > b + 7) & (r > b + 25) & ((r + 1) / (g + 1) > 1.07)
-    hair = (r > g + 1) & (r > b + 3) & (r < 150) & (g < 125) & (b < 135)
-    neck_zone = (x > 96) & (x < 416)
-    keep = (y < 326) | (skin & (y <= 422) & neck_zone) | (hair & (y < 362) & neck_zone)
-    # Keep edge pixels around the moving neck instead of leaving a flat crop.
-    skin_mask = Image.fromarray(np.uint8((skin & (y <= 418) & neck_zone) * 255))
-    expanded = skin_mask.filter(ImageFilter.MaxFilter(5))
-    keep |= np.asarray(expanded) > 127
-    matte = Image.fromarray(np.uint8(keep * 255)).filter(ImageFilter.GaussianBlur(0.8))
-    rgba = np.array(pix, copy=True)
-    rgba[:, :, 3] = np.asarray(matte).astype(np.uint16) * rgba[:, :, 3].astype(np.uint16) // 255
-    return Image.fromarray(rgba, "RGBA"), matte
+def extract_head(image):
+    src=np.asarray(image.convert("RGBA"))
+    if src.shape != (CELL,CELL,4):
+        raise ValueError("Each approved original frame must be 512x512 RGBA")
+    c=src[...,:3].astype(np.int16)
+    r,g,b=c[...,0],c[...,1],c[...,2]
+    y,x=np.indices((CELL,CELL))
+    visible=src[...,3]>25
+    skin=(r>90)&(r>g+8)&(g>b+8)&(r>b+22)&visible
+    hair=(r<=140)&(r>=g-10)&(r>=b-7)&(g<145)&(b<145)&visible
+    seeds=((skin&(y<424))|(hair&(y<344)))
+    seeds&=(x>34)&(x<478)
+    labels,n=ndi.label(morph(seeds,11))
+    if n<1:raise ValueError("Missing face/hair foreground")
+    sizes=np.bincount(labels.ravel());sizes[0]=0
+    if sizes.max()<20000:raise ValueError("Head component too small")
+    core=ndi.binary_fill_holes(labels==int(sizes.argmax()))
+    core=morph(core,9)
+    keep=np.asarray(Image.fromarray((core*255).astype("uint8")).filter(ImageFilter.MaxFilter(7)))>125
+    # Keep the entire chin/expressive hands, not the navy/white jacket.
+    neck=morph(skin&(x>42)&(x<470),17)
+    neck=np.asarray(Image.fromarray((neck*255).astype("uint8")).filter(ImageFilter.MaxFilter(9)))>125
+    keep[y>=345]&=neck[y>=345]
+    soft=np.asarray(Image.fromarray((keep*255).astype("uint8")).filter(ImageFilter.GaussianBlur(.65)))
+    out=src.copy()
+    out[...,3]=(out[...,3].astype(np.uint16)*soft.astype(np.uint16)//255).astype("uint8")
+    return Image.fromarray(out,"RGBA"),skin
 
+def neck_tip(head,skin):
+    alpha=np.asarray(head.getchannel("A"))>45
+    cols=np.indices(alpha.shape)[1]
+    yy,xx=np.where(alpha&skin&(cols>224)&(cols<294))
+    if len(yy)<120:raise ValueError("Insufficient neck skin to align")
+    bottom=int(np.quantile(yy,.998))
+    low=(yy>=bottom-18)&(xx>224)&(xx<294)
+    if low.sum()<15:raise ValueError("Insufficient anchor width")
+    return int(round(np.median(xx[low]))),bottom
 
-def immutable_body(center):
-    """Remove only the original center head, retaining its exact hoodie pixels."""
-    _, original_head_mask = split_head(center)
-    rgba = np.array(center.convert("RGBA"), copy=True)
-    rgba[:, :, 3] = (rgba[:, :, 3].astype(np.uint16) * (
-        255 - np.asarray(original_head_mask).astype(np.uint16)
-    ) // 255).astype(np.uint8)
-    fixed = Image.fromarray(rgba, "RGBA")
-    # Dark undershirt behind the neck prevents tiny transparent collar gaps.
-    backing = Image.new("RGBA", (CELL, CELL))
-    ImageDraw.Draw(backing).ellipse((204, 335, 308, 438), fill=(25, 36, 65, 255))
+def translate(frame,dx,dy):
+    out=Image.new("RGBA",(CELL,CELL))
+    out.paste(frame,(int(dx),int(dy)))
+    return out
+
+def immutable_body(center,head):
+    # Remove every remnant of the original CENTER face, retain collar colors.
+    px=np.array(center.convert("RGBA"),copy=True)
+    cut=np.asarray(head.getchannel("A"))>15
+    wider=ndi.binary_dilation(cut,iterations=12)
+    y=np.indices(cut.shape)[0]
+    rgb=px[...,:3].astype(np.int16); r,g,b=rgb[...,0],rgb[...,1],rgb[...,2]
+    navy=(b>r+9)&(b>g+3)&(r<165)
+    white=(r>170)&(g>168)&(b>170)&(np.abs(r-g)<22)
+    garment=navy|white
+    # Keep the high original hood; never allow the old hair silhouette to ghost.
+    remove=(y<294)|((y>=294)&(y<346)&wider&~garment)|((y>=346)&cut)
+    px[...,3][remove]=0
+    fixed=Image.fromarray(px,"RGBA")
+    backing=Image.new("RGBA",(CELL,CELL))
+    ImageDraw.Draw(backing).ellipse((213,341,299,439),fill=(24,33,57,255))
     backing.alpha_composite(fixed)
     return backing
 
-
-def build(source, dest):
-    source, dest = Path(source), Path(dest)
-    dest.mkdir(parents=True, exist_ok=True)
-    src_center = Image.open(source / "directions/center.png").convert("RGBA")
-    body = immutable_body(src_center)
-    body.save(dest / "body.webp", format="WEBP", lossless=True, method=6)
-    for category, names in (("directions", DIRECTIONS), ("reactions", REACTIONS)):
-        atlas = Image.new("RGBA", (CELL * 3, CELL * 3))
-        for index, name in enumerate(names):
-            src = Image.open(source / category / (name + ".png")).convert("RGBA")
-            head, _ = split_head(src)
-            atlas.alpha_composite(head, ((index % 3) * CELL, (index // 3) * CELL))
-        out = dest / (category + ".webp")
-        atlas.save(out, format="WEBP", lossless=True, method=6)
-        verify = Image.open(out).convert("RGBA")
-        assert verify.size == atlas.size, "3 x 3 atlas dimensions are incorrect"
-        assert verify.getpixel((0, 0))[3] == 0, "Atlas corners must be transparent"
+def build(source,dest):
+    source,dest=Path(source),Path(dest)
+    dest.mkdir(parents=True,exist_ok=True)
+    frames,metrics={},{}
+    for kind,names in (("directions",DIRECTIONS),("reactions",REACTIONS)):
+        for name in names:
+            src=Image.open(source/kind/(name+".png")).convert("RGBA")
+            head,skin=extract_head(src)
+            neck_x,neck_y=neck_tip(head,skin)
+            dx,dy=ANCHOR[0]-neck_x,ANCHOR[1]-neck_y
+            if abs(dx)>22 or abs(dy)>38:
+                raise ValueError(f"Frame too far from neck anchor: {kind}/{name}: {(dx,dy)}")
+            aligned=translate(head,dx,dy)
+            opaque=np.asarray(aligned.getchannel("A"))>60
+            if np.count_nonzero(opaque[439:])>50:
+                raise ValueError(f"Dynamic jacket fragment: {kind}/{name}")
+            frames[kind,name]=aligned
+            metrics[kind+"/"+name]={
+                "original_neck":[neck_x,neck_y],"shift":[int(dx),int(dy)],
+                "visible_pixels":int(np.count_nonzero(opaque)),
+                "pixel_bounds":list(aligned.getbbox() or ())
+            }
+    center=Image.open(source / "directions/center.png").convert("RGBA")
+    head,_=extract_head(center)
+    body=immutable_body(center,head)
+    body.save(dest/"body.webp",format="WEBP",lossless=True,method=6)
+    for kind,names in (("directions",DIRECTIONS),("reactions",REACTIONS)):
+        atlas=Image.new("RGBA",(3*CELL,3*CELL))
+        for i,name in enumerate(names):
+            atlas.alpha_composite(frames[kind,name],((i%3)*CELL,(i//3)*CELL))
+        atlas.save(dest/(kind+".webp"),format="WEBP",lossless=True,method=6)
+        check=Image.open(dest/(kind+".webp")).convert("RGBA")
+        assert check.size==(1536,1536)
         for i in range(9):
-            area = verify.crop(((i % 3) * CELL, (i // 3) * CELL,
-                                (i % 3 + 1) * CELL, (i // 3 + 1) * CELL))
-            assert area.getchannel("A").getbbox(), "Missing cell " + str(i)
-        print(f"PASS {out}: nine cropped head-only cells")
-    assert Image.open(dest / "body.webp").size == (CELL, CELL)
-    print("PASS fixed-body 512 x 512, source artwork untouched")
+            cell=check.crop(((i%3)*CELL,(i//3)*CELL,(i%3+1)*CELL,(i//3+1)*CELL))
+            assert cell.getchannel("A").getbbox(),(kind,i)
+    assert len(frames)==18
+    (dest/"alignment-report.json").write_text(json.dumps({
+        "version":"7.0","anchor":list(ANCHOR),"frames":metrics,
+        "body_source":"assets/directions/center.png",
+        "body_is_single_immutable_layer":True,
+        "source_artwork_unchanged":True
+    },indent=2),encoding="utf-8")
+    print("PASS: 18 anchored head frames; one stationary torso; no moving jacket pixels")
 
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--source", default="assets")
-    parser.add_argument("--dest", default="dist/assets/rig")
-    a = parser.parse_args()
-    build(a.source, a.dest)
+if __name__=="__main__":
+    parser=argparse.ArgumentParser()
+    parser.add_argument("--source",default="assets")
+    parser.add_argument("--dest",default="dist/assets/rig")
+    args=parser.parse_args()
+    build(args.source,args.dest)

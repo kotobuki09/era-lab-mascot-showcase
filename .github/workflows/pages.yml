@@ -53,6 +53,7 @@ jobs:
           test -s dist/assets/rig/body.webp
           test -s dist/assets/rig/directions.webp
           test -s dist/assets/rig/reactions.webp
+          python tests/rig_quality.py dist/assets/rig
       - name: Upload production site
         uses: actions/upload-pages-artifact@v3
         with:

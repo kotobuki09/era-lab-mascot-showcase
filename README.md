@@ -1,25 +1,29 @@
 # ERA Lab Mascot Showcase
 
-Premium, dependency-free page-mascot showcase for ERA Lab's **male researcher mascot** — black hair, rectangular glasses and a white/navy orbit hoodie.
+An animated, dependency-free mascot showcase for ERA Lab's **male researcher character**, preserving the original black hair, rectangular glasses and white/navy orbit hoodie artwork.
 
-**Latest build: v4.1.** Includes nine shoulder-aligned directions, nine reactions, frame-rate-independent gaze easing, a 112ms interruptible latest-frame crossfade, transparent PNG exports, reduced-motion support, and a responsive asset library.
+**Latest release: v5.0 — smoother cursor tracking.** All nine head directions and nine expression poses use the original 512×512 transparent PNG exports. The v5 engine keeps every frame mounted and decoded, uses angular direction sectors with a center dead zone and boundary hysteresis, and moves the sprite via a small GPU-friendly spring transform. Switching poses no longer swaps `img.src` or crossfades two faces, and periodic full-face "fake blinking" has been removed. The image library, mobile direction buttons, and reduced-motion setting remain available.
 
-## Deployment status
+## Live site and deployment
 
-✅ Frontend source, 18 production transparent PNG frames, two original master sheets, and 9 automated tests are committed to `main`.
+**Website:** https://kotobuki09.github.io/era-lab-mascot-showcase/
 
-⚠️ GitHub Actions deployment is currently blocked because **GitHub Pages is not enabled for this repository**. The workflow run reports `Get Pages site failed — Not Found`. An automated attempt to enable Pages using `GITHUB_TOKEN` was rejected by GitHub (`Resource not accessible by integration`).
+**Deployment:** GitHub Pages via [Verify and deploy ERA Lab mascot](https://github.com/kotobuki09/era-lab-mascot-showcase/actions/workflows/pages.yml). The site is built from the isolated static project and published automatically on `main` updates. The workflow runs PNG/checksum and JavaScript/motion tests before upload.
 
-**One-time repository-owner action:** open [Settings → Pages](https://github.com/kotobuki09/era-lab-mascot-showcase/settings/pages), set **Build and deployment → Source: GitHub Actions**. Afterwards, rerun the [latest Pages workflow](https://github.com/kotobuki09/era-lab-mascot-showcase/actions/workflows/pages.yml), or push a small commit to `main`.
+**Last verified release:** [v5.0 deployment (successful)](https://github.com/kotobuki09/era-lab-mascot-showcase/actions/runs/38110878550). Public browser checks also confirmed the mascot, direction controls, reaction buttons and 18-frame asset library.
 
-Expected project-only URL: https://kotobuki09.github.io/era-lab-mascot-showcase/
+This repository **does not publish to or modify** the separate [Sharper Night](https://github.com/kotobuki09/kotobuki09.github.io) user-site repository. The deployment workflow checks that it runs only in `kotobuki09/era-lab-mascot-showcase`.
 
-The workflow checks `github.repository` to avoid deploying elsewhere, and uploads only a generated `dist/` folder containing the mascot website. The separate Sharper Night user site `kotobuki09/kotobuki09.github.io` is untouched.
+## Artwork and implementation
 
-## Notes
+- 18 original, transparent 512×512 PNG direction/reaction frames live under `assets/directions/` and `assets/reactions/`.
+- Two unmodified 1254×1254 master sheets are preserved under `assets/originals/`.
+- Shoulder/hoodie framing uses the already aligned frame exports without changing the source artwork.
+- Direction changes follow the pointer's angle with an eight-sector map, dead-zone and angular hysteresis. Head pose selection is discrete because the artwork contains nine directions, not a rigged model.
+- Pose layers are decoded once and switched without ghosting or synchronous layout reads. Fine spring motion between selections is separate from the frame compositor.
+- Keyboard, mobile arrow buttons, reduced-motion preference, gallery filters, zoom and PNG downloads remain available.
+- Node tests can be run with `node --test tests/verify.mjs tests/engine.test.mjs`; no `npm install` or build tool is required.
 
-- All 18 production frames are individual transparent 512×512 PNGs, not CSS-cropped sprite rectangles.
-- Both high-resolution 1254×1254 master sprite sheets remain in `assets/originals/`.
-- Pixel-safe translations align the shoulder/hoodie anchor without altering the masters.
-- CI runs the 9 automated asset and motion tests before deploying.
-- True continuous head rotation beyond nine directions would require a rigged 2D model; the current build smooths directional transitions without distorting the artwork.
+## Rendering limitation
+
+Nine authored directions cannot produce continuous, anatomically accurate head rotation. Achieving actual smooth intermediate head poses would require additional aligned in-between frames or a rigged 2D/3D character. The current v5 update removes avoidable animation stutter and visual double-exposure without inventing or distorting the approved mascot artwork.

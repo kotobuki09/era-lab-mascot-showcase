@@ -53,7 +53,7 @@ test('source artwork and the gallery remain intact',()=>{
 });
 test('accessibility and reduced motion are respected',()=>{
   assert.match(js,/prefers-reduced-motion: reduce/);
-  assert.match(js,/if\(state\.motion && typeof stage\.animate/);
+  assert.match(js,/if\(!state\.motion \|\| typeof headTrack\.animate!==\'function\'\)return/);
   assert.match(js,/e\.key==='Enter'/);
   assert.match(js,/event\.pointerType==='touch'/);
   assert.match(html,/id="motion-toggle"/);

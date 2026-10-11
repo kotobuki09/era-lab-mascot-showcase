@@ -70,7 +70,7 @@
   function boop(){
     if(!state.motion || typeof headTrack.animate!=='function')return;
     if(headAnimation)headAnimation.cancel();
-    // ONLY animate the head layer: never animate #mascot-stage or #mascot-body.
+    // ONLY animate the inner head: preserve the outer positioning and torso.
     headAnimation=headTrack.animate(SQUASH,{duration:320,easing:'linear'});
   }
   function say(txt,duration=1400){
